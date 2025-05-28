@@ -486,3 +486,50 @@ rslts_all_import %>%
 ## hmm that changes things, but doesn't seem to have any clearer patterns
 ## which suggests that it is not small levels of I alone, that are driving the
 ## transient dynamics
+
+#### ANALYZE VAX STARTING AT EVERY TIME POINT IN THE CYCLE ---------------------
+timepoints = seq(0, 2, length.out = 11)
+paras_tmp = paras_importation
+paras_tmp["beta1"] = examp_beta1[3] # FIXED FOR NOW
+
+# start with beta1 = 0.2
+rslts_import_tryall = list()
+for(i in 1:length(timepoints)){
+  time_on_tmp = time_on_peak + timepoints[i]
+  vax_tmp = approxfun(
+    c(0, time_on_tmp-1/365, time_on_tmp, time_on_tmp + nyear_vax, time_on_tmp + nyear_vax + 1/365,  max(times)), 
+    c(0, 0,                 vax_on,      vax_on,                  vax_release,                      vax_release)
+    )
+  rslts_import_tryall[[i]] = as.data.frame(
+    ode(start, times, seirmod2, paras_tmp, vax_pct = vax_tmp, rtol = 1e-10, atol = 1e-10)) %>%
+    mutate(beta1 = examp_beta1[i], 
+           # Re = c(0, diff(Re)), 
+           Re = paras_tmp["beta0"] * (1 + paras_tmp["beta1"] * cos(2 * pi * time)) * paras_tmp["sigma"] * S / ((paras_tmp["gamma"] + paras_tmp["mu"]) * (paras_tmp["sigma"] + paras_tmp["mu"])  * paras_tmp["N"]), 
+           timestep = timepoints[i],
+           vax_on = time_on_tmp)
+}
+
+rslts_import_tryall <- bind_rows(rslts_import_tryall) %>%
+  mutate(stage = ifelse(time < vax_on, "pre vax", 
+                        ifelse(time < vax_on + nyear_vax, "high vax", "decline vax")), 
+         time_adj = time - timestep)
+
+rslts_import_tryall %>% 
+  filter(time_adj > time_on_peak, time < 88 + timestep) %>% 
+  melt(c("time", "beta1", "timestep", "vax_on", "stage", "time_adj")) %>%
+  ggplot(aes(x = time_adj, y = value, color = as.factor(timestep))) + 
+  geom_line() + 
+  facet_grid(cols = vars(timestep), rows = vars(variable), scales = "free") + 
+  theme_bw() + 
+  theme(legend.position = "none")
+
+rslts_import_tryall %>% 
+  filter(time_adj > time_on_peak-1.75, time < 88 + timestep) %>% 
+  ggplot(aes(x = log(S), y = log(I), color = stage)) + 
+  geom_path() + 
+  facet_wrap(vars(timestep)) + 
+  scale_color_manual(values = c("blue", "red", "black")) + 
+  theme_bw() + 
+  theme(legend.position = "none", 
+        panel.grid = element_blank())
+
