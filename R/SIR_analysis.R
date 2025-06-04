@@ -6,6 +6,22 @@ library(deSolve)
 library(ggplot2)
 library(reshape2)
 
+sirmod = function(t, y, parameters, vax_pct) {
+  S = y[1]
+  I = y[2]
+  R = y[3]
+  parameters = c(parameters, v = vax_pct(t))
+  with(as.list(parameters), {
+    beta = beta0 * (1 + beta1 * cos(2 * pi * t))
+    dS = mu * (N - S) * (1 - v) - beta * S * I/N - delta * S # additional importations
+    dI = beta * S * I/N - (mu + gamma) * I  + delta * S
+    dR = mu * (N - S) * v + gamma * I - mu * R
+    res = c(dS, dI, dR)
+    list(res)
+  })
+}
+
+
 seirmod2 = function(t, y, parameters, vax_pct) {
   S = y[1]
   E = y[2]
@@ -25,10 +41,16 @@ seirmod2 = function(t, y, parameters, vax_pct) {
 
 # times = c(seq(0, 80-1/365, by = 1/365), seq(82, 85, by = 1/(365*5)), seq(85+1/365, 100, by=1/365))
 times = seq(0, 100, by = 1/365)
-no_vax = approxfun(times, rep(0, length(times)))
+times_long = seq(0, 300, by = 1/365)
+no_vax = approxfun(times_long, rep(0, length(times_long)))
 paras = c(mu = 1/50, N = 1, beta0 = 1000, beta1 = 0.2,
           sigma = 365/8, gamma = 365/5, vax_pct = 0, delta = 0)
+print(paste0("SEIR R0: ", round(paras["beta0"]/(paras["mu"] + paras["gamma"])*(paras["sigma"]/(paras["mu"] + paras["sigma"])),2)))
+paras_sir = c(mu = 1/75, N = 1, beta0 = 750, beta1 = 0.2,
+              gamma = 365/7, vax_pct = 0, delta = 0)
+print(paste0("SIR R0: ", round(paras_sir["beta0"]/(paras_sir["mu"] + paras_sir["gamma"]),2)))
 start = c(S = 0.06, E = 0, I = 0.001, R = 0.939)
+start_sir = c(S = 0.06, I = 0.001, R = 0.939)
 results = as.data.frame(ode(start, times, seirmod2, paras, vax_pct = no_vax))
 
 ggplot(data = results %>% filter(time > 80), aes(x = time, y = I)) + 
@@ -489,47 +511,261 @@ rslts_all_import %>%
 
 #### ANALYZE VAX STARTING AT EVERY TIME POINT IN THE CYCLE ---------------------
 timepoints = seq(0, 2, length.out = 11)
+years = seq(2, 4, length.out = 9)
 paras_tmp = paras_importation
-paras_tmp["beta1"] = examp_beta1[3] # FIXED FOR NOW
+paras_tmp["beta1"] = examp_beta1[1] # FIXED TO ANNUAL DYNAMICS FOR NOW
 
 # start with beta1 = 0.2
 rslts_import_tryall = list()
-for(i in 1:length(timepoints)){
-  time_on_tmp = time_on_peak + timepoints[i]
-  vax_tmp = approxfun(
-    c(0, time_on_tmp-1/365, time_on_tmp, time_on_tmp + nyear_vax, time_on_tmp + nyear_vax + 1/365,  max(times)), 
-    c(0, 0,                 vax_on,      vax_on,                  vax_release,                      vax_release)
+for(j in 1:length(years)){
+  print(paste0("j = ", j, "/", length(years)))
+  rslts_import_tmp = list()
+  for(i in 1:length(timepoints)){
+    time_on_tmp = time_on_peak + timepoints[i]
+    vax_tmp = approxfun(
+      c(0, time_on_tmp-1/365, time_on_tmp, time_on_tmp + years[j], time_on_tmp + years[j] + 1/365,  max(times)), 
+      c(0, 0,                 vax_on,      vax_on,                 vax_release,                     vax_release)
     )
-  rslts_import_tryall[[i]] = as.data.frame(
-    ode(start, times, seirmod2, paras_tmp, vax_pct = vax_tmp, rtol = 1e-10, atol = 1e-10)) %>%
-    mutate(beta1 = examp_beta1[i], 
-           # Re = c(0, diff(Re)), 
-           Re = paras_tmp["beta0"] * (1 + paras_tmp["beta1"] * cos(2 * pi * time)) * paras_tmp["sigma"] * S / ((paras_tmp["gamma"] + paras_tmp["mu"]) * (paras_tmp["sigma"] + paras_tmp["mu"])  * paras_tmp["N"]), 
-           timestep = timepoints[i],
-           vax_on = time_on_tmp)
+    rslts_import_tmp[[i]] = as.data.frame(
+      ode(start, times, seirmod2, paras_tmp, vax_pct = vax_tmp, rtol = 1e-10, atol = 1e-10)) %>%
+      mutate(beta1 = examp_beta1[i], 
+             # Re = c(0, diff(Re)), 
+             Re = paras_tmp["beta0"] * (1 + paras_tmp["beta1"] * cos(2 * pi * time)) * paras_tmp["sigma"] * S / 
+               ((paras_tmp["gamma"] + paras_tmp["mu"]) * (paras_tmp["sigma"] + paras_tmp["mu"])  * paras_tmp["N"]), 
+             timestep = timepoints[i],
+             vax_on = time_on_tmp)
+  }
+  rslts_import_tryall[[j]] = bind_rows(rslts_import_tmp) %>%
+    mutate(vax_nyear = years[j])
 }
+
 
 rslts_import_tryall <- bind_rows(rslts_import_tryall) %>%
   mutate(stage = ifelse(time < vax_on, "pre vax", 
                         ifelse(time < vax_on + nyear_vax, "high vax", "decline vax")), 
          time_adj = time - timestep)
 
+# plot all trajectories
 rslts_import_tryall %>% 
-  filter(time_adj > time_on_peak, time < 88 + timestep) %>% 
-  melt(c("time", "beta1", "timestep", "vax_on", "stage", "time_adj")) %>%
-  ggplot(aes(x = time_adj, y = value, color = as.factor(timestep))) + 
+  filter(time_adj > time_on_peak, time < 88 + timestep, timestep <= 1, vax_nyear <= 3) %>% 
+  ggplot(aes(x = time_adj, y = I, color = as.factor(timestep))) + 
   geom_line() + 
-  facet_grid(cols = vars(timestep), rows = vars(variable), scales = "free") + 
-  theme_bw() + 
-  theme(legend.position = "none")
-
-rslts_import_tryall %>% 
-  filter(time_adj > time_on_peak-1.75, time < 88 + timestep) %>% 
-  ggplot(aes(x = log(S), y = log(I), color = stage)) + 
-  geom_path() + 
-  facet_wrap(vars(timestep)) + 
-  scale_color_manual(values = c("blue", "red", "black")) + 
+  facet_grid(cols = vars(timestep), rows = vars(vax_nyear)) + 
   theme_bw() + 
   theme(legend.position = "none", 
+        panel.grid.minor = element_blank())
+
+# plot all attractors
+rslts_import_tryall %>% 
+  filter(time_adj > time_on_peak-1.75, time < 88 + timestep, timestep <= 1, vax_nyear <= 3) %>% 
+  ggplot(aes(x = log(S), y = log(I), color = as.factor(stage))) + 
+  geom_path() +
+  facet_grid(cols = vars(timestep), rows = vars(vax_nyear)) + 
+  scale_color_manual(values = c("blue", "red", "black")) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", 
         panel.grid = element_blank())
+
+
+expand.grid(timestep = timepoints, 
+            vax_nyear = years) %>%
+  mutate(sim_id = seq_len(n())) %>%
+  mutate(pos_timestep = which(timepoints == timestep), 
+         pos_vax_nyear = which(years == vax_nyear), .by = "sim_id") %>%
+  mutate(arb_group = pos_timestep + pos_vax_nyear) %>%
+  filter(timepoints <= 1)
+
+# verify that dynamics really are similar along the diagonals
+rslts_import_tryall %>% 
+  filter(time_adj > time_on_peak-1.75, time < 88 + timestep, stage == "decline vax") %>% 
+  left_join(expand.grid(timestep = timepoints, 
+                        vax_nyear = years) %>%
+              mutate(sim_id = seq_len(n())) %>%
+              mutate(pos_timestep = which(timepoints == timestep), 
+                     pos_vax_nyear = which(years == vax_nyear), .by = "sim_id") %>%
+              mutate(arb_group = pos_timestep + pos_vax_nyear)) %>%
+  filter(timestep <= 1, vax_nyear <= 3) %>%
+  ggplot(aes(x = time, y = log(I), color = as.factor(timestep))) + 
+  geom_path(aes(group = timestep), alpha = 0.5) +
+  facet_wrap(vars(arb_group)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank())
+
+# show on attractor
+rslts_import_tryall %>% 
+  filter(time_adj > time_on_peak-1.75, time < 88 + timestep, stage == "decline vax", timestep <= 1, vax_nyear <= 3) %>% 
+  left_join(expand.grid(timestep = timepoints, 
+                        vax_nyear = years) %>%
+              mutate(sim_id = seq_len(n())) %>%
+              mutate(pos_timestep = which(timepoints == timestep), 
+                     pos_vax_nyear = which(years == vax_nyear), .by = "sim_id") %>%
+              mutate(arb_group = pos_timestep + pos_vax_nyear)) %>%
+  ggplot(aes(x = log(S), y = log(I), color = as.factor(timestep))) + 
+  geom_path(aes(group = timestep), alpha = 0.5) +
+  geom_point(data = rslts_import_tryall %>% 
+               filter(time_adj > time_on_peak-1.75, time < 88 + timestep, stage == "decline vax") %>% 
+               mutate(min_time = min(time_adj), .by = c("timestep", "vax_on", "vax_nyear") )%>%
+               filter(time_adj == min_time) %>%
+               left_join(expand.grid(timestep = timepoints, 
+                                     vax_nyear = years) %>%
+                           mutate(sim_id = seq_len(n())) %>%
+                           mutate(pos_timestep = which(timepoints == timestep), 
+                                  pos_vax_nyear = which(years == vax_nyear), .by = "sim_id") %>%
+                           mutate(arb_group = pos_timestep + pos_vax_nyear)) %>%
+               filter(timestep <= 1, vax_nyear <= 3)) + 
+  facet_wrap(vars(arb_group)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank())
+
+# for comparison, generate the same plot grouped by duration of perturbation
+rslts_import_tryall %>% 
+  filter(time_adj > time_on_peak-1.75, time < 88 + timestep, stage == "decline vax", timestep < 1) %>% 
+  ggplot(aes(x = log(S), y = log(I), color = as.factor(timestep))) + 
+  geom_path(aes(group = timestep), alpha = 0.5) +
+  geom_point(data = rslts_import_tryall %>% 
+               filter(time_adj > time_on_peak-1.75, time < 88 + timestep, stage == "decline vax") %>% 
+               mutate(min_time = min(time_adj), .by = c("timestep", "vax_on", "vax_nyear") )%>%
+               filter(time_adj == min_time)) + 
+  facet_wrap(vars(vax_nyear)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank())
+
+
+#### REPEAT WITH BIENNIAL DYNAMICS AS BASELINE ---------------------------------
+timepoints = seq(0, 2, length.out = 11)
+years = seq(2, 4, length.out = 9)
+paras_tmp = paras_importation
+paras_tmp["beta1"] = examp_beta1[3] # FIXED TO ANNUAL DYNAMICS FOR NOW
+
+# start with beta1 = 0.2
+rslts_import_tryall2 = list()
+for(j in 1:length(years)){
+  print(paste0("j = ", j, "/", length(years)))
+  rslts_import_tmp = list()
+  for(i in 1:length(timepoints)){
+    time_on_tmp = time_on_peak + timepoints[i]
+    vax_tmp = approxfun(
+      c(0, time_on_tmp-1/365, time_on_tmp, time_on_tmp + years[j], time_on_tmp + years[j] + 1/365,  max(times)), 
+      c(0, 0,                 vax_on,      vax_on,                 vax_release,                     vax_release)
+    )
+    rslts_import_tmp[[i]] = as.data.frame(
+      ode(start, times, seirmod2, paras_tmp, vax_pct = vax_tmp, rtol = 1e-10, atol = 1e-10)) %>%
+      mutate(beta1 = examp_beta1[i], 
+             # Re = c(0, diff(Re)), 
+             Re = paras_tmp["beta0"] * (1 + paras_tmp["beta1"] * cos(2 * pi * time)) * paras_tmp["sigma"] * S / 
+               ((paras_tmp["gamma"] + paras_tmp["mu"]) * (paras_tmp["sigma"] + paras_tmp["mu"])  * paras_tmp["N"]), 
+             timestep = timepoints[i],
+             vax_on = time_on_tmp)
+  }
+  rslts_import_tryall2[[j]] = bind_rows(rslts_import_tmp) %>%
+    mutate(vax_nyear = years[j])
+}
+
+
+rslts_import_tryall2 <- bind_rows(rslts_import_tryall2) %>%
+  mutate(stage = ifelse(time < vax_on, "pre vax", 
+                        ifelse(time < vax_on + nyear_vax, "high vax", "decline vax")), 
+         time_adj = time - timestep)
+
+# plot all trajectories
+rslts_import_tryall2 %>% 
+  filter(time_adj > time_on_peak, time < 88 + timestep) %>% 
+  ggplot(aes(x = time_adj, y = I, color = as.factor(timestep))) + 
+  geom_line() + 
+  facet_grid(cols = vars(timestep), rows = vars(vax_nyear)) + 
+  theme_bw() + 
+  theme(legend.position = "none", 
+        panel.grid.minor = element_blank())
+
+
+# show on attractor
+rslts_import_tryall2 %>% 
+  filter(time_adj > time_on_peak-1.75, time < 88 + timestep, stage == "decline vax") %>% 
+  left_join(expand.grid(timestep = timepoints, 
+                        vax_nyear = years) %>%
+              mutate(sim_id = seq_len(n())) %>%
+              mutate(pos_timestep = which(timepoints == timestep), 
+                     pos_vax_nyear = which(years == vax_nyear), .by = "sim_id") %>%
+              mutate(arb_group = pos_timestep + pos_vax_nyear)) %>%
+  ggplot(aes(x = log(S), y = log(I), color = as.factor(timestep))) + 
+  geom_path(aes(group = timestep), alpha = 0.5) +
+  geom_point(data = rslts_import_tryall2 %>% 
+               filter(time_adj > time_on_peak-1.75, time < 88 + timestep, stage == "decline vax") %>% 
+               mutate(min_time = min(time_adj), .by = c("timestep", "vax_on", "vax_nyear") )%>%
+               filter(time_adj == min_time) %>%
+               left_join(expand.grid(timestep = timepoints, 
+                                     vax_nyear = years) %>%
+                           mutate(sim_id = seq_len(n())) %>%
+                           mutate(pos_timestep = which(timepoints == timestep), 
+                                  pos_vax_nyear = which(years == vax_nyear), .by = "sim_id") %>%
+                           mutate(arb_group = pos_timestep + pos_vax_nyear))) + 
+  facet_wrap(vars(arb_group)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank())
+
+
+## CAN WE DO SIR INSTEAD? ------------------------------------------------------
+beta0_vec_short = seq(500, 1000, length = 6)
+beta1_vec_short = seq(0, 0.25, length = 26)
+
+# quick bifurcation diagram
+bifur_results_sir = list()
+# Loop over beta1’s
+for(j in 1:length(beta0_vec_short)){
+  print(paste0("beta0: ", beta0_vec_short[j]))
+  bifur_results_tmp = list()
+  paras_tmp = paras_sir
+  paras_tmp["beta0"] = beta0_vec_short[j]
+  for (i in 1:length(beta1_vec_short)) {
+    print(paste0(i, "/", length(beta1_vec_short)))
+    paras_tmp["beta1"] = beta1_vec_short[i]
+    if(j== 3 & i== 10){browser()}
+    bifur_results_tmp[[i]] = as.data.frame(ode(start_sir, times_long, sirmod, paras_tmp, vax_pct = no_vax)) %>%
+      mutate(beta1 = beta1_vec_short[i])
+  }
+  bifur_results_sir[[j]] = bind_rows(bifur_results_tmp) %>%
+    mutate(beta0 = beta0_vec_short[j])
+}
+
+bind_rows(bifur_results_sir) %>%
+  filter(time%%1 == 0, time > 280) %>%
+  ggplot(aes(x = beta1, y = I)) + 
+  geom_point(alpha = 0.2) + 
+  geom_vline(data = data.frame(beta1 = examp_beta1), 
+             aes(xintercept = beta1), linetype = "dotted", color = 'red') + 
+  facet_wrap(vars(beta0)) + 
+  theme_bw()
+
+
+annual_beta1_sir = 0.0
+bienn1_beta1_sir = 0.02
+bienn2_beta1_sir = 0.1
+
+examp_beta1 = c(annual_beta1_sir, bienn1_beta1_sir, bienn2_beta1_sir)
+
+p1 = bind_rows(bifur_results_sir) %>%
+  filter(time%%1 == 0, time > 280) %>%
+  ggplot(aes(x = beta1, y = I)) + 
+  geom_point(alpha = 0.2) + 
+  geom_vline(data = data.frame(beta1 = examp_beta1), 
+             aes(xintercept = beta1), linetype = "dotted", color = 'red') + 
+  theme_bw()
+p2 = bind_rows(bifur_results_sir) %>%
+  filter(round(beta1, 5) %in% examp_beta1, time > 290) %>%
+  ggplot(aes(x = time, y = I)) + 
+  geom_line() + 
+  facet_wrap(vars(beta1), ncol = 1) +
+  scale_x_continuous(breaks = seq(90, 100, 2)) + 
+  theme_bw()
+p3 = bind_rows(bifur_results_sir) %>%
+  filter(round(beta1, 5) %in% examp_beta1, time > 294) %>%
+  ggplot(aes(x = S, y = I)) + 
+  geom_path() + 
+  facet_wrap(vars(beta1), ncol = 1) + 
+  theme_bw()
+cowplot::plot_grid(p1, p2, p3, nrow = 1)
 
