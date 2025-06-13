@@ -1,0 +1,67 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{Post-vaccination rebounds in the SIR model}
+\author{Emily Howerton}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+
+\section{Theoretical honeymoon period in the SEIR model}
+We will consider how reductions in vaccination rates can lead to rebounds in disease prevalence in a SEIR (Susceptible, Exposed, Infected, Recovered) model. In particular, we will focus on the post-vaccination ``honeymoon", or how long it takes for the disease to rebound after vaccination rates start declining.
+
+To begin, we will consider the simplest case where (a) a population has been under the vaccination regime for sufficiently long period of time to be at equilibrium, and (b) that the pathogen is locally extinct.  Let $v_0$ be the vaccination rate during the period of herd immunity, and let $v$ be the vaccination rate after the decline begins. 
+
+In the SEIR model, we know there are two possible equilibria: 
+\begin{enumerate}
+    \item disease-free equilibrium, where $S^* = v_0$
+    \item endemic equilibrium, where $S^* = \frac{1}{\beta}(\mu + \gamma + \frac{mu(\mu + \gamma)}{\sigma})$
+\end{enumerate}
+
+Here, we are only considering the first case where a population is above the herd immunity threshold, $1/R_0$, because otherwise there is no honeymoon period. We are interested in the duration of the honeymoon period, which we hypothesize will depend on a number of factors including the $R_0$ of the pathogen, the equilibrium number of susceptibles $S^*$, the birth rate $\mu$, the new vaccination coverage $v$ under decline, and  the timing of importations. Because we cannot control the timing of importations, we ignore this piece and define the honeymoon period as the time it takes for $R_e = 1/R_0*S > 1$. In other words, the time it takes for $R_e$ to cross 1 is a lower bound on the honeymoon period, where any importation after this point will start an outbreak. 
+
+We can calculate analytically the time it takes for $R_e$ to cross 1, under assumptions of local extinction (i.e., $I = 0$) and a constant vaccination rate, $v$. In this case, we have a differential equation for the number of susceptibles, $S$, which we can solve using the following steps:
+
+\begin{align}
+    \frac{dS}{dt} &= \mu (1-v) - \mu S \\
+    e^{\mu t}\Big(\frac{dS}{dt} + \mu S \Big) &= e^{\mu t} \mu (1-v) \\
+    \int e^{\mu t}\Big(\frac{dS}{dt} + \mu S \Big) dt &= \int e^{\mu t} \mu (1-v) dt \\
+    \int e^{\mu t}\frac{dS}{dt} + e^{\mu t}\mu S dt &= \int e^{\mu t} \mu (1-v) dt \\
+    e^{\mu t} S &= (1-v) e^{\mu t} + C \\
+    S(t) &= (1-v) + C e^{-\mu t}
+\end{align}
+
+\noindent
+and solving $S(0)$ gives us $C = S_0 - (1-v)$.
+Thus, we have:
+
+$$
+S(t) = (1-v) + (S_0 - (1-v)) e^{-\mu t}
+$$
+
+\noindent
+We can find the time $t$ it takes for $R_e = 1/R_0 * S(t) > 1$, which yields
+
+$$
+t = \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{S_0 - (1-v)}\Big)
+$$
+
+\noindent
+We can also rewrite this equation to show us the relationship between prior vaccinoation coverage and new vaccination coverage, that will yield equivalent honeymoon periods. When vaccination rates are above the herd immunity threshold, $S_0 = v_0$ the pre-drop vaccination coverage, so 
+
+\begin{align}
+    t &= \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{v_0 - (1-v)}\Big) \\
+    v_0 &= v - e^{-\mu t} \Big(1/R_0 - (1-v)\Big) \\
+    v_0 &= e^{-\mu t}(1-1/R_0) + (1+e^{-\mu t})v \\
+\end{align}
+
+
+\end{document}
