@@ -2,6 +2,7 @@
 sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates,
                                  fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
   with(as.list(parms),{
+    x = x[-length(x)] # remove beta hat variable for calculations
     # if(any(x < 0)){print("X NEG!")}
     nage = length(age_classes)
     ncomp = length(compartments)
@@ -16,8 +17,9 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     # calculate age-specific transmission rates
     beta <- beta0*(beta1*cos(2*pi*(t-p))+1)
     lambda <- waifw%*%((beta/sum(x)*(x_mat[, "I"])))
+    beta_hat = sum(lambda * x_mat[, "S"])/ (sum(x_mat[, "I"]) * sum(x_mat[, "S"])/sum(x))
+    # print(beta/beta_hat)
     if(adjust_beta_flag){
-      beta_hat = sum(lambda * x_mat[, "S"])/ (sum(x_mat[, "I"]) * sum(x_mat[, "S"])/sum(x))
       lambda = lambda * beta/beta_hat
     }
     # fertility
@@ -49,6 +51,7 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     der <- c(t(der))
     names(der) <- sapply(age_classes, function(i){paste0(compartments, "_", i)})
     # browser()
+    der <- c(der, BH = beta/beta_hat)
     return(list(der))
   })
 }
@@ -133,6 +136,7 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, type = "s
     IC[which(indx_comp == "S")] = start_pop*0.059/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "I")] = 0.001/length(age_classes)
     IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
+    IC = c(IC, BH = 0)
     return(IC)
   }
   if(type == "stable-age"){
@@ -145,13 +149,16 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, type = "s
     IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
+    IC = c(IC, BH = 0)
     return(IC)
   }
 }
 
 process_results <- function(rslts, plot_flag = FALSE, plot_title = NA, max_t){
-  rslts_long <- melt(rslts, c("time")) %>%
-      tidytable::separate(variable, into = c("variable", "age"))
+  rslts_long <- rslts %>%
+    mutate(BH = c(NA, diff(BH))*365) %>% # change for different dt
+    melt(c("time")) %>%
+    tidytable::separate(variable, into = c("variable", "age"))
   if(plot_flag){
     rslts_tot <- rslts_long %>% 
       filter(variable == "I") %>%

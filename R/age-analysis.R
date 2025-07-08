@@ -36,7 +36,7 @@ age_classes2 = c(20, 40)
 rslts2 <- run_ode(
   age_classes = age_classes2, mort = rep(mort, length(age_classes2)),
   fert = rep(fert, length(age_classes2)), start_pop = start_pop,
-  IC_type = "std", max_t = max(times_long), params = paras,
+  IC_type = "std", max_t = max(times_long)+100, params = paras,
   plot_flag = TRUE, plot_title = "2 age classes")
 
 #### TEST WITH REALISTIC STRUCTURE ---------------------------------------------
@@ -55,7 +55,7 @@ rslts3 <- run_ode(
 Sys.time() - start.time
 
 #### NOW ADD VACCINATION -------------------------------------------------------
-vax_change_times = c(0, 190, 195)
+vax_change_times = c(0, 290, 295)
 vax_rates = c(0, 0.8, 0.4)
 
 start.time <- Sys.time()
@@ -75,8 +75,26 @@ start.time <- Sys.time()
 rslts4_u <- run_ode(
   age_classes = age_classes, mort = rep(mort, length(age_classes)),
   fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
-  IC_type = "std", max_t = max(times_long)+75, params = paras, beep_flag = TRUE,
+  IC_type = "std", max_t = max(times_long)+100, params = paras, beep_flag = TRUE,
   adjust_beta_flag = TRUE, plot_flag = TRUE, plot_title = "realistic structure, POLYMOD (adjust beta)")
 Sys.time() - start.time
+
+start.time <- Sys.time()
+rslts4_n <- run_ode(
+  age_classes = age_classes, mort = rep(mort, length(age_classes)),
+  fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
+  IC_type = "std", max_t = max(times_long)+250, params = paras, beep_flag = TRUE,
+  adjust_beta_flag = FALSE, plot_flag = TRUE, plot_title = "realistic structure, POLYMOD (adjust beta)")
+Sys.time() - start.time
+
+ggplot(data = rslts4_n %>% summarize(value = sum(value), .by = c("variable", "time")) %>% filter(time > 500)) +
+  geom_line(aes(x = time, y = value)) + 
+  facet_grid(rows = vars(variable), scales = "free")
+
+ggplot(data = rslts4_u %>% filter(variable == "BH"), aes(x = time, y = value)) + 
+  geom_line()
+
+ggplot(data = rslts4_n %>% filter(time == max(time), !is.na(age), variable == "I") %>% summarize(value = sum(value), .by = c("age")) %>% mutate(age = as.double(age)) %>% filter(age < 20)) + 
+  geom_bar(aes(x = age, y = value), stat = "identity") 
 
 
