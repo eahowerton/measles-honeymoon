@@ -2,7 +2,7 @@
 sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates,
                                  fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
   with(as.list(parms),{
-    x = x[-length(x)] # remove beta hat variable for calculations
+    x = x[1:(length(x)-3)] # remove beta hat variables for calculations
     # if(any(x < 0)){print("X NEG!")}
     nage = length(age_classes)
     ncomp = length(compartments)
@@ -16,8 +16,15 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     else{v = 0}
     # calculate age-specific transmission rates
     beta <- beta0*(beta1*cos(2*pi*(t-p))+1)
-    lambda <- waifw%*%((beta/sum(x)*(x_mat[, "I"])))
-    beta_hat = sum(lambda * x_mat[, "S"])/ (sum(x_mat[, "I"]) * sum(x_mat[, "S"])/sum(x))
+    N = sum(x_mat)
+    tot_I = sum(x_mat[, "I"])
+    tot_S = sum(x_mat[, "S"])
+    homogeneous_s = tot_S*diff(c(0, age_classes))/sum(diff(c(0, age_classes))) # account for differences in age bin width
+    homogeneous_i = tot_I*diff(c(0, age_classes))/sum(diff(c(0, age_classes)))
+    lambda <- waifw%*%(beta/N*(x_mat[, "I"]))
+    beta_hat = sum(lambda * x_mat[, "S"])/ ((tot_I * tot_S)/N)
+    beta_hat_s = sum(waifw%*%(beta/N*homogeneous_i) * x_mat[, "S"])/ ((tot_I * tot_S)/N) # contribution of heterogeneous susceptibility (i.e., assume constant I)
+    beta_hat_i = sum(lambda * homogeneous_s)/ ((tot_I * tot_S)/N) # contribution of heterogeneous infectious (i.e., assume constant S)
     # print(beta/beta_hat)
     if(adjust_beta_flag){
       lambda = lambda * beta/beta_hat
@@ -51,7 +58,7 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     der <- c(t(der))
     names(der) <- sapply(age_classes, function(i){paste0(compartments, "_", i)})
     # browser()
-    der <- c(der, BH = beta/beta_hat)
+    der <- c(der, BH = beta/beta_hat, BHs = beta/beta_hat_s, BHi = beta/beta_hat_i)
     return(list(der))
   })
 }
@@ -136,7 +143,7 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, type = "s
     IC[which(indx_comp == "S")] = start_pop*0.059/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "I")] = 0.001/length(age_classes)
     IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
-    IC = c(IC, BH = 0)
+    IC = c(IC, BH = 0, BHs = 0, BHi = 0)
     return(IC)
   }
   if(type == "stable-age"){
@@ -149,16 +156,19 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, type = "s
     IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
-    IC = c(IC, BH = 0)
+    IC = c(IC, BH = 0, BHs = 0, BHi = 0)
     return(IC)
   }
 }
 
 process_results <- function(rslts, plot_flag = FALSE, plot_title = NA, max_t){
   rslts_long <- rslts %>%
-    mutate(BH = c(NA, diff(BH))*365) %>% # change for different dt
+    mutate(BH = c(NA, diff(BH))*365, 
+           BHs = c(NA, diff(BHs))*365, 
+           BHi = c(NA, diff(BHi))*365) %>% # change for different dt
     melt(c("time")) %>%
-    tidytable::separate(variable, into = c("variable", "age"))
+    tidytable::separate(variable, into = c("variable", "age"), sep = "_") %>%
+    mutate(age = as.double(age))
   if(plot_flag){
     rslts_tot <- rslts_long %>% 
       filter(variable == "I") %>%
@@ -190,7 +200,7 @@ create_polymod_matrix = function(age_classes, plot_flag = FALSE,
   polysmooth = Tps(xy, z3, df = 100)
   # surface(polysmooth, xlab = "", ylab = "", col = gray((12:32)/32))
   # annualize & symmetrize
-  ps = predict(polysmooth, x = expand.grid(age_classes/12, age_classes/12))
+  ps = predict(polysmooth, x = expand.grid(age_classes, age_classes))
   ps2 = matrix(ps, ncol = length(age_classes))
   ps2 = ps2 + t(ps2)
   W = ps2/mean(ps2)
@@ -201,11 +211,11 @@ create_polymod_matrix = function(age_classes, plot_flag = FALSE,
       scale_fill_viridis_c() + 
       scale_x_continuous(expand = c(0,0),
                          breaks = which(age_classes %in% age_classes_to_label),
-                         labels = age_classes_to_label/12,
+                         labels = age_classes_to_label,
                          name = "age (years)") +
       scale_y_continuous(expand = c(0,0),
                          breaks = which(age_classes %in% age_classes_to_label),
-                         labels = age_classes_to_label/12,
+                         labels = age_classes_to_label,
                          name = "age (years)")
     print(p)
   }
