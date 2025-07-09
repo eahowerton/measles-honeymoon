@@ -57,17 +57,16 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
                   nrow = nage, ncol = ncomp)
     der <- c(t(der))
     names(der) <- sapply(age_classes, function(i){paste0(compartments, "_", i)})
-    # browser()
     der <- c(der, BH = beta/beta_hat, BHs = beta/beta_hat_s, BHi = beta/beta_hat_i)
     return(list(der))
   })
 }
 
-vax_change_times#' max_t in weeks
+#' max_t in weeks
 run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, vax_rates = NA, 
-                    waifw = NA, IC_type, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
+                    waifw = NA, IC_type, IC_manual = NA, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
                     print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA){
-  IC = setup_IC(start_pop, age_classes, compartments, mort, fert, IC_type)
+  IC = setup_IC(start_pop, age_classes, compartments, mort, fert, IC_type, IC_manual)
   if(any(is.na(waifw))){
     waifw = matrix(1, length(age_classes), length(age_classes)) 
   }
@@ -111,7 +110,7 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
                              fert =  c(rep(0,66),rep(0.1,7)), time.step = 1){
   nage <- length(age.classes)
   # aging.rate <- time.step/diff(c(0,age.classes))
-  aging.rate <- 1/diff(c(0,age_classes))/365 # for daily time steps
+  aging.rate <- 1/diff(c(0,age.classes))/365 # for daily time steps
   Fmat <- Tmat <- matrix(0,nage,nage)
   for (j in 1:(nage-1)) { 
     Tmat[j,j] <- (1-mort[j]*time.step)*(1-aging.rate[j])
@@ -125,6 +124,12 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
   # calculate equilibrium values
   stable.age <- Re(eigen(Tmat+Fmat)$vector[,1])
   stable.age <- stable.age/sum(stable.age)
+  # adjust for negatives?
+  if(any(stable.age < 0)){
+    stable.age2 = stable.age
+    stable.age[which(stable.age < 0)] = 0
+    stable.age[which(stable.age == max(stable.age))] = stable.age[which(stable.age == max(stable.age))] - (sum(stable.age) - 1) 
+  }
   lambda <- Re(eigen(Tmat+Fmat)$value[1])
   reprod.value <- Re(eigen(Tmat+Fmat)$vector[1,])
   return(list(stable.age = stable.age, lambda = lambda,
@@ -132,24 +137,21 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
 }
 
 # std give 2000 infected individuals across all PA and PB
-setup_IC <- function(start_pop, age_classes, compartments, mort, fert, type = "std"){
+setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type = "std", IC_manual = NA){
   # indexing - the rows for maternal, susceptible, etc
   indx_comp = rep(compartments, length(age_classes))
-  if(type == "std"){
+  IC <- rep(0,length(age_classes)*length(compartments))
+  names(IC) = paste0(rep(compartments, length(age_classes)), "_", 
+                     sort(rep(age_classes, length(compartments))))
+  if(IC_type == "std"){
     # setup initial conditions
-    IC <- rep(0,length(age_classes)*length(compartments))
-    names(IC) = paste0(rep(compartments, length(age_classes)), "_", 
-                       sort(rep(age_classes, length(compartments))))
     IC[which(indx_comp == "S")] = start_pop*0.059/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "I")] = 0.001/length(age_classes)
     IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
     IC = c(IC, BH = 0, BHs = 0, BHi = 0)
     return(IC)
   }
-  if(type == "stable-age"){
-    IC <- rep(0,length(age_classes)*length(compartments))
-    names(IC) = paste0(rep(compartments, length(age_classes)), "_", 
-                       sort(rep(age_classes, length(compartments))))
+  else if(IC_type == "stable-age"){
     expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = 1)
     IC[which(indx_comp == "S")] = start_pop*0.059*expected_stable$stable.age 			 # susceptibles
     IC[which(indx_comp == "I")] = start_pop*0.001*expected_stable$stable.age 			 # infecteds
@@ -158,6 +160,16 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, type = "s
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
     IC = c(IC, BH = 0, BHs = 0, BHi = 0)
     return(IC)
+  }
+  # otherwise provide an IC vector (distributed according to stable age distribution)
+  else if(IC_type == "manual")
+    {
+    expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = 1)
+    IC[which(indx_comp == "S")] = start_pop*IC_manual["S"]*expected_stable$stable.age
+    IC[which(indx_comp == "E")] = start_pop*IC_manual["E"]*expected_stable$stable.age
+    IC[which(indx_comp == "I")] = start_pop*IC_manual["I"]*expected_stable$stable.age
+    IC[which(indx_comp == "R")] = start_pop*IC_manual["R"]*expected_stable$stable.age
+    IC = c(IC, BH = 0, BHs = 0, BHi = 0)
   }
 }
 
