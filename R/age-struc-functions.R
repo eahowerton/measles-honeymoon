@@ -1,9 +1,17 @@
 #' @param rsv_force list of functions for age-specific rsv_force values
-sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates,
+sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates, Fmat,
                                  fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
   with(as.list(parms),{
-    x = x[1:(length(x)-3)] # remove beta hat variables for calculations
-    # if(any(x < 0)){print("X NEG!")}
+    # if(any(abs(t - seq(5, 100, 5)) < 1e-2)){
+    #   print(t)
+    #   }
+    # if(abs(t - 0.5) < 1e-4){browser()}
+    # print(t)
+    # if(t > 1){browser()}
+    x = x[1:(length(x)-4)] # remove beta hat variables for calculations
+    if(any(x < 0)){
+      if(any(abs(x[which(x<0)]) > 1e-10)){print(paste("X NEG! t = ", t)); print(x[which(x < -1e-10)])}
+      x[which(x<0)] = 0}
     nage = length(age_classes)
     ncomp = length(compartments)
     aging <- 1/diff(c(0,age_classes))
@@ -25,12 +33,12 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     beta_hat = sum(lambda * x_mat[, "S"])/ ((tot_I * tot_S)/N)
     beta_hat_s = sum(waifw%*%(beta/N*homogeneous_i) * x_mat[, "S"])/ ((tot_I * tot_S)/N) # contribution of heterogeneous susceptibility (i.e., assume constant I)
     beta_hat_i = sum(lambda * homogeneous_s)/ ((tot_I * tot_S)/N) # contribution of heterogeneous infectious (i.e., assume constant S)
+    beta_hat_b = sum(waifw%*%(beta/N*homogeneous_i) * homogeneous_s)/ ((tot_I * tot_S)/N) # contribution of heterogeneous mixing (i.e., assume constant S and I)
     # print(beta/beta_hat)
     if(adjust_beta_flag){
       lambda = lambda * beta/beta_hat
     }
     # fertility
-    Fmat <- buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = ncomp, time.step = 1)
     N_fert <- Fmat %*% x
     N_fert <- matrix(N_fert, ncol = ncomp, nrow = nage, dimnames = list(age_classes, compartments))
     N_age <- x_mat * aging
@@ -57,21 +65,22 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
                   nrow = nage, ncol = ncomp)
     der <- c(t(der))
     names(der) <- sapply(age_classes, function(i){paste0(compartments, "_", i)})
-    der <- c(der, BH = beta/beta_hat, BHs = beta/beta_hat_s, BHi = beta/beta_hat_i)
+    der <- c(der, BH = beta/beta_hat, BHs = beta/beta_hat_s, BHi = beta/beta_hat_i, BHb = beta/beta_hat_b)
     return(list(der))
   })
 }
 
 #' max_t in weeks
-run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, vax_rates = NA, 
+run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, vax_rates = NA, compartments,
                     waifw = NA, IC_type, IC_manual = NA, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
-                    print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA){
+                    print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA, dt = 1/12){
   IC = setup_IC(start_pop, age_classes, compartments, mort, fert, IC_type, IC_manual)
   if(any(is.na(waifw))){
     waifw = matrix(1, length(age_classes), length(age_classes)) 
   }
   # run model
-  times = seq(0, max_t, 1/365)
+  times = seq(0, max_t, dt)
+  Fmat <- buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = length(compartments), time.step = 1)
   rslts <- as.data.frame(
     ode(
       y = IC,
@@ -85,11 +94,12 @@ run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, v
       vax_change_times = vax_change_times, 
       vax_rates = vax_rates,
       parms = params, 
+      Fmat = Fmat,
       adjust_beta_flag = adjust_beta_flag, 
       print_warnings_flag = print_warnings_flag
     ))
   if(beep_flag){beep()}
-  return(process_results(rslts, plot_flag, plot_title, max_t))
+  return(process_results(rslts, plot_flag, plot_title, max_t, dt))
 }
 
 
@@ -148,8 +158,6 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
     IC[which(indx_comp == "S")] = start_pop*0.059/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "I")] = 0.001/length(age_classes)
     IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
-    IC = c(IC, BH = 0, BHs = 0, BHi = 0)
-    return(IC)
   }
   else if(IC_type == "stable-age"){
     expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = 1)
@@ -158,26 +166,31 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
     IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
-    IC = c(IC, BH = 0, BHs = 0, BHi = 0)
-    return(IC)
   }
   # otherwise provide an IC vector (distributed according to stable age distribution)
   else if(IC_type == "manual")
     {
-    expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = 1)
-    IC[which(indx_comp == "S")] = start_pop*IC_manual["S"]*expected_stable$stable.age
-    IC[which(indx_comp == "E")] = start_pop*IC_manual["E"]*expected_stable$stable.age
-    IC[which(indx_comp == "I")] = start_pop*IC_manual["I"]*expected_stable$stable.age
-    IC[which(indx_comp == "R")] = start_pop*IC_manual["R"]*expected_stable$stable.age
-    IC = c(IC, BH = 0, BHs = 0, BHi = 0)
+    if(length(IC_manual) == length(compartments)){
+      expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = 1)
+      IC[which(indx_comp == "S")] = start_pop*IC_manual["S"]*expected_stable$stable.age
+      IC[which(indx_comp == "E")] = start_pop*IC_manual["E"]*expected_stable$stable.age
+      IC[which(indx_comp == "I")] = start_pop*IC_manual["I"]*expected_stable$stable.age
+      IC[which(indx_comp == "R")] = start_pop*IC_manual["R"]*expected_stable$stable.age
+    }
+    else if(length(IC_manual == length(IC))){
+      IC = IC_manual
+    }
   }
+  IC = c(IC, BH = 0, BHs = 0, BHi = 0, BHb = 0)
+  return(IC)
 }
 
-process_results <- function(rslts, plot_flag = FALSE, plot_title = NA, max_t){
+process_results <- function(rslts, plot_flag = FALSE, plot_title = NA, max_t, dt){
   rslts_long <- rslts %>%
-    mutate(BH = c(NA, diff(BH))*365, 
-           BHs = c(NA, diff(BHs))*365, 
-           BHi = c(NA, diff(BHi))*365) %>% # change for different dt
+    mutate(BH = c(NA, diff(BH))*(1/dt), 
+           BHs = c(NA, diff(BHs))*(1/dt), 
+           BHi = c(NA, diff(BHi))*(1/dt), 
+           BHb = c(NA, diff(BHb))*(1/dt)) %>% # change for different dt
     melt(c("time")) %>%
     tidytable::separate(variable, into = c("variable", "age"), sep = "_") %>%
     mutate(age = as.double(age))
@@ -215,6 +228,7 @@ create_polymod_matrix = function(age_classes, plot_flag = FALSE,
   ps = predict(polysmooth, x = expand.grid(age_classes, age_classes))
   ps2 = matrix(ps, ncol = length(age_classes))
   ps2 = ps2 + t(ps2)
+  ps2[ps2<0] = 0 # EH ADDED: IS THIS OKAY?
   W = ps2/mean(ps2)
   if(plot_flag){
     # plot W matrix
