@@ -480,9 +480,9 @@ xx = findStableStruct(age_classes, fert = rep(fert, length(age_classes)),
 
 # measles like?
 jcm_results = vector("list", length(waifw))
-paras_jcm = c(mu = 1/50, N = 1, beta0 = 400, beta1 = 0, omega = 0,
+paras_jcm = c(mu = 1/50, N = 1, beta0 = 365, beta1 = 0, omega = 0,
                       sigma = 365/1, gamma = 365/14, vax_pct = 0, delta = 0, p = 0)
-# paras_jcm["N"] = 500000
+paras_jcm["N"] = 500000
 
 # R0
 with(as.list(paras_jcm), beta0/(gamma + mu)*(sigma/(sigma + mu)))
@@ -509,15 +509,29 @@ lapply(waifw2, melt) %>%
                      labels = c(2, 4, 6, 8, 10, 30, 50, 70),
                      name = "age (years)")
 
+# do the matching on age-specific incidence 
+scalars = match_on_age_or_inc(age_classes = age_classes, mort =  rep(mort, length(age_classes)), 
+                    fert = rep(fert, length(age_classes)), 
+                    start_pop = paras_jcm["N"], compartments = compartments, 
+                    params = paras_jcm, waifws = waifw2[-1], plot_flag = TRUE)
+
+chosen_scalars = scalars %>% filter(variable == "tot_I_diff", best_value == TRUE)
+
+
+
 for(i in 1:length(waifw)){
   print(paste0(i, "/", length(waifw)))
+  paras_tmp = paras_jcm
+  if(i > 1){
+    paras_tmp["beta0"] = paras_tmp["beta0"] * chosen_scalars %>% filter(waifw_id == i) %>% pull(scalar)
+  }
   jcm_results[[i]] = run_ode(
     age_classes = age_classes, mort = rep(mort, length(age_classes)),
-    fert = rep(fert, length(age_classes)), start_pop = start_pop,
+    fert = rep(fert, length(age_classes)), start_pop = paras_jcm["N"],
     compartments = compartments, w = waifw2[[i]],
-    IC_type = "std", max_t = 50, params = paras_jcm, #, IC_manual = new_IC
-    adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
-    mutate(v = test_v[i])
+    IC_type = "std", max_t = 100, params = paras_tmp, #, IC_manual = new_IC
+    adjust_beta_flag = FALSE, plot_flag = FALSE) #%>%
+    # mutate(v = test_v[i])
 }
 
 jcm_results_long = bind_rows(jcm_results, .id = "waifw_id")

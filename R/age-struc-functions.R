@@ -1,3 +1,4 @@
+#### SIR MODEL -----------------------------------------------------------------
 #' @param rsv_force list of functions for age-specific rsv_force values
 sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates, Fmat,
                                  fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
@@ -10,7 +11,7 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     # if(t > 1){browser()}
     x = x[1:(length(x)-4)] # remove beta hat variables for calculations
     if(any(x < 0)){
-      if(any(abs(x[which(x<0)]) > 1e-10)){print(paste("X NEG! t = ", t)); print(x[which(x < -1e-10)])}
+      if(any(abs(x[which(x<0)]) > 1e-10)){print(paste("X NEG! t = ", t)); print(x[which(x < -1e-7)])}
       x[which(x<0)] = 0}
     nage = length(age_classes)
     ncomp = length(compartments)
@@ -70,6 +71,7 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
   })
 }
 
+#### HELPERS -------------------------------------------------------------------
 #' max_t in weeks
 run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, vax_rates = NA, compartments,
                     waifw = NA, IC_type, IC_manual = NA, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
@@ -248,5 +250,79 @@ create_polymod_matrix = function(age_classes, plot_flag = FALSE,
   return(W)
 }
 
+#' should be list
+match_on_age_or_inc = function(age_classes, mort, fert, start_pop, compartments, 
+                               params, waifws, plot_flag = FALSE){
+  # run ODE with flat WAIFW
+  flat = run_ode(age_classes = age_classes, mort = mort, fert = fert, 
+                 start_pop = start_pop, compartments = compartments, params = params, 
+                 IC_type = "std", max_t = 100, dt = 1/12)
+  # get age distribution of cases
+  age_dist_target = flat %>% 
+    filter(time == max(time), variable %in% c("I")) %>% 
+    arrange(age) %>%
+    pull(value)
+  # loop through beta multipliers for all other waifw 
+  waifw_scalars = vector("list", length(waifws))
+  for(i in 1:length(waifws)){
+    print(paste0("starting waifw ", i, "/", length(waifws)))
+    waifw_scalars[[i]] = match_one_waifw(age_classes = age_classes, mort = mort, fert = fert, 
+                    start_pop = start_pop, compartments = compartments, params = params,
+                    age_dist_flat = age_dist_target, new_waifw = waifws[[i]])
+  }
+  waifw_scalars2 = bind_rows(waifw_scalars, .id = "waifw_id") %>%
+    mutate(waifw_id = as.integer(waifw_id) + 1) %>% # assuming in the code, waifw1 = flat (not included in this scalaing analysis)
+    melt(c("scalar", "waifw_id")) %>%
+    mutate(best_value = min(abs(value), na.rm = TRUE), .by = c("waifw_id", "variable")) %>%
+    mutate(best_value = ifelse(abs(value) == best_value, TRUE, FALSE))
+  if(plot_flag){
+    p = ggplot(data = waifw_scalars2, 
+           aes(x = scalar, y = value)) + 
+      geom_line() + 
+      geom_point(aes(color = best_value)) + 
+      facet_grid(cols = vars(waifw_id), rows = vars(variable), scales = "free") + 
+      scale_color_manual(values = c("black", "red")) + 
+      theme_bw()
+    print(p)
+  }
+  return(waifw_scalars2)
+}
+
+match_one_waifw = function(age_classes, mort, fert, start_pop, compartments, params,
+                           age_dist_flat, new_waifw, scalars = exp(seq(-3, 3, 0.25))){
+  bin_width = diff(c(0, age_classes))
+  flat_mean_age = sum(age_dist_flat*(age_classes-bin_width/2))/sum(age_dist_flat)
+  new_waifw_results = data.frame(scalar = scalars, tot_I_diff = NA, mean_age_diff = NA) #abs_age_diff = NA, 
+  for(i in 1:length(scalars)){
+    tmp_pars = params
+    tmp_pars["beta0"] = tmp_pars["beta0"]*scalars[i]
+    tmp_out = tryCatch(
+      #this is the chunk of code we want to run
+      {run_ode(age_classes = age_classes, mort = mort, fert = fert, 
+               start_pop = start_pop, compartments = compartments, params = tmp_pars,
+               waifw = new_waifw, IC_type = "std", max_t = 100, dt = 1/12)
+        #when it throws an error, the following block catches the error
+      }, error = function(msg){
+        return(data.frame(time = NA))
+      })
+    if(any(is.na(tmp_out$time))){
+      print(paste0("error in scalar of ", scalars[i]))
+      # new_waifw_results[i, "abs_age_diff"] = NA
+      new_waifw_results[i, "tot_I_diff"] = NA
+      new_waifw_results[i, "mean_age_diff"] = NA
+    }
+    else{
+      age_dist_new_waifw = tmp_out %>%
+        filter(time == max(time), variable == "I") %>% 
+        arrange(age) %>%
+        pull(value)
+      new_waifw_mean_age = sum(age_dist_new_waifw*(age_classes - bin_width/2))/sum(age_dist_new_waifw)
+      # new_waifw_results[i, "abs_age_diff"] = sum(abs(age_dist_new_waifw - age_dist_flat))
+      new_waifw_results[i, "tot_I_diff"] = sum(age_dist_new_waifw) - sum(age_dist_flat)
+      new_waifw_results[i, "mean_age_diff"] = new_waifw_mean_age - flat_mean_age
+    }
+  }
+  return(new_waifw_results)
+}
 
 
