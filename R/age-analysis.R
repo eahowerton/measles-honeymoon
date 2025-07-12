@@ -35,7 +35,7 @@ vax_rate_drop = 0.4
 age_classes1 =  c(100)
 rslts1 <- run_ode(
   age_classes = age_classes1, mort = mort, fert = fert, start_pop = start_pop, 
-  IC_type = "std", max_t = 400, params = paras, 
+  IC_type = "std", max_t = 400, params = paras, compartments = compartments,
   plot_flag = TRUE, plot_title = "1 age class")
 
 new_IC = rslts1 %>% filter(time == max(time), variable %in% c("S", "E", "I", "R")) %>% pull(value)
@@ -43,7 +43,8 @@ names(new_IC) = c("S", "E", "I", "R")
 
 rslts1_v <- run_ode(
   age_classes = age_classes1, mort = mort, fert = fert, start_pop = start_pop, 
-  IC_type = "std", max_t = 400, params = paras, vax_change_times = c(0), vax_rates = c(vax_rate_high),
+  IC_type = "std", max_t = 400, params = paras, compartments = compartments,
+  vax_change_times = c(0), vax_rates = c(vax_rate_high),
   plot_flag = TRUE, plot_title = "1 age class")
 
 new_IC_highvax = rslts1_v %>% filter(time == max(time), variable %in% c("S", "E", "I", "R")) %>% pull(value)
@@ -53,7 +54,7 @@ names(new_IC_highvax) = c("S", "E", "I", "R")
 age_classes2 = c(20, 40)
 rslts2 <- run_ode(
   age_classes = age_classes2, mort = rep(mort, length(age_classes2)),
-  fert = rep(fert, length(age_classes2)), start_pop = start_pop,
+  fert = rep(fert, length(age_classes2)), start_pop = start_pop, compartments = compartments,
   IC_type = "manual", IC_manual = new_IC, max_t = 50, params = paras,
   plot_flag = TRUE, plot_title = "2 age classes")
 
@@ -105,7 +106,7 @@ start.time <- Sys.time()
 rslts4_n <- run_ode(
   age_classes = age_classes, mort = rep(mort, length(age_classes)),
   fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
-  IC_type = "manual", IC_manual = new_IC, max_t = max(times_long)+250, params = paras, beep_flag = TRUE,
+  IC_type = "manual", IC_manual = new_IC, max_t = 100, params = paras, beep_flag = TRUE,
   adjust_beta_flag = FALSE, plot_flag = TRUE, plot_title = "realistic structure, POLYMOD (don't adjust beta)")
 Sys.time() - start.time
 
@@ -113,8 +114,8 @@ start.time <- Sys.time()
 rslts4_v <- run_ode(
   age_classes = age_classes, mort = rep(mort, length(age_classes)),
   fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
-  vax_change_times = c(0, 450), vax_rates = c( 0.9, 0.4),
-  IC_type = "std", max_t = 475, params = paras, beep_flag = TRUE,
+  vax_change_times = c(0, 50), vax_rates = vax_rates,
+  IC_type = "manual", IC_manual = new_IC_highvax, max_t = 100, params = paras, beep_flag = TRUE,
   adjust_beta_flag = FALSE, plot_flag = TRUE, plot_title = "realistic structure, POLYMOD")
 Sys.time() - start.time
 
@@ -137,12 +138,15 @@ bind_rows(rslts4_v %>% mutate(adjust_beta = FALSE),
   geom_line() + 
   facet_wrap(vars(variable), scales = "free", ncol = 1)
 
-timepoints = seq(448, 458, 2)
+# timepoints = seq(448, 458, 2)
+timepoints = c(2, 4, 6)+50
+max_time = 65
+min_time = 45
 
 p0 = rslts4_v %>% mutate(age = as.double(age)) %>%
-  filter(time > 448, variable %in% c("S", "I")) %>%
+  filter(time > min_time, time < max_time, variable %in% c("S", "I")) %>%
   summarize(value = sum(value), .by = c("variable", "time")) %>%
-  bind_rows(rslts4_v %>% filter(time > 448, variable == "I") %>%
+  bind_rows(rslts4_v %>% filter(time > min_time, time < max_time, variable == "I") %>%
               mutate(bin_width = bin_width[as.factor(age)]) %>%
               summarize(value = sum(value*(age-bin_width/2))/sum(value), .by = c("time")) %>%
               mutate(variable = "mean_age")) %>%
@@ -159,7 +163,7 @@ p0 = rslts4_v %>% mutate(age = as.double(age)) %>%
 
 
 p1 = rslts4_v %>% mutate(age = as.double(age)) %>%
-  filter(time > 448, variable %in% c("BH", "BHs", "BHi")) %>%
+  filter(time > min_time, time < max_time, variable %in% c("BH", "BHs", "BHi")) %>%
   summarize(value = sum(value), .by = c("variable", "time")) %>%
   ggplot() + 
   geom_hline(yintercept = 1) + 
@@ -175,17 +179,17 @@ p1 = rslts4_v %>% mutate(age = as.double(age)) %>%
         panel.grid.major.x = element_blank())
 
 
-# p2 = rslts4_v %>% filter(time %in% timepoints, variable %in% c("S", "I"), age <= 40) %>%
-#   mutate(bin_width = bin_width[as.factor(age)],
-#          value = value/bin_width) %>%
-#   ggplot(aes(x = age, y = value)) +
-#   geom_hline(data = rslts4_v %>% filter(time %in% timepoints, variable %in% c("S", "I")) %>%
-#                summarize(value = sum(value)/n(), .by = c("variable", "time")),
-#              aes(yintercept = value), color = "red") +
-#   geom_point(size = 1, shape = 1) +
-#   facet_grid(rows = vars(variable), cols = vars(time), scales = "free") +
-#   theme_bw() +
-#   theme(panel.grid.minor = element_blank())
+p2 = rslts4_v %>% filter(time %in% timepoints, variable %in% c("S", "I"), age <= 40) %>%
+  mutate(bin_width = bin_width[as.factor(age)],
+         value = value/bin_width) %>%
+  ggplot(aes(x = age, y = value)) +
+  geom_hline(data = rslts4_v %>% filter(time %in% timepoints, variable %in% c("S", "I")) %>%
+               summarize(value = sum(value)/n(), .by = c("variable", "time")),
+             aes(yintercept = value), color = "red") +
+  geom_point(size = 1, shape = 1) +
+  facet_grid(rows = vars(variable), cols = vars(time), scales = "free") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
 # 
 # p22 = rslts4_v %>% filter(time %in% timepoints, variable %in% c("S", "I"), age <= 10) %>%
 #   mutate(bin_width = bin_width[as.factor(age)], 
@@ -209,13 +213,13 @@ p1 = rslts4_v %>% mutate(age = as.double(age)) %>%
 #         panel.grid.minor = element_blank(), 
 #         panel.grid.major.x = element_blank())
 
-p23 = rslts4_v %>% filter(time > 448, variable %in% c("S", "I"), age <= 30) %>%
+p23 = rslts4_v %>% filter(time > min_time, time < max_time, variable %in% c("S", "I"), age <= 30) %>%
   mutate(bin_width = bin_width[as.factor(age)], 
          value = value/bin_width) %>% 
   dcast(time + age ~ variable, value.var = "value") %>%
   ggplot(aes(x = time, y = as.factor(age))) + 
   geom_tile(aes(fill = S)) + 
-  geom_point(data = rslts4_v %>% filter(time %in% seq(448, 475, 4), variable == "I", age <= 30) %>%
+  geom_point(data = rslts4_v %>% filter(time %in% seq(min_time, max_time, 4), variable == "I", age <= 30) %>%
                mutate(bin_width = bin_width[as.factor(age)],
                       I = value/bin_width),
              aes(size = I), color = "white") +
@@ -270,4 +274,273 @@ p24 = rslts4_v %>% filter(time %in% 540:550, variable %in% c("S"), age <= 10) %>
   theme_bw()
   
   
-  
+#### CALCULATE EQUILIBRIUM UNITY BETA AT DIFFERENT VACCINATION COVERAGES -------
+test_v = seq(0, 0.75, 0.15)
+equil_vax = vector("list", length(test_v))
+for(i in 1:length(test_v)){
+  print(paste0(i, "/", length(test_v)))
+  equil_vax[[i]] = run_ode(
+    age_classes = age_classes, mort = rep(mort, length(age_classes)),
+    fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
+    compartments = compartments,
+    vax_change_times = c(0), vax_rates = c(test_v[i]),
+    IC_type = "manual", IC_manual = new_IC, max_t = ifelse(i < 4, 200, 400), params = paras, 
+    adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+    mutate(v = test_v[i])
+}
+
+saveRDS(equil_vax, "data/output-data/equil_vax.rds")
+
+test_v = seq(0, 0.75, 0.15)
+equil_vax_flat = vector("list", length(test_v))
+for(i in 1:length(test_v)){
+  print(paste0(i, "/", length(test_v)))
+  equil_vax_flat[[i]] = run_ode(
+    age_classes = age_classes, mort = rep(mort, length(age_classes)),
+    fert = rep(fert, length(age_classes)), start_pop = start_pop,
+    compartments = compartments,
+    vax_change_times = c(0), vax_rates = c(test_v[i]),
+    IC_type = "manual", IC_manual = new_IC, max_t = ifelse(i < 4, 200, 350), params = paras, 
+    adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+    mutate(v = test_v[i])
+}
+
+equil_vax_full = bind_rows(equil_vax)
+equil_vax_flat_full = bind_rows(equil_vax_flat)
+
+# beta hats
+bind_rows(
+  equil_vax_full %>%
+    mutate(max_time = max(time), .by = c("v")) %>%
+    filter(time == max_time, variable %in% c("BH", "BHi", "BHs")) %>%
+    mutate(w = "POLYMOD"), 
+  equil_vax_flat_full %>%
+    mutate(max_time = max(time), .by = c("v")) %>%
+    filter(time == max_time, variable %in% c("BH", "BHi", "BHs")) %>%
+    mutate(w = "flat")
+) %>%
+  ggplot(aes(x = v, y = value, color = variable)) + 
+  geom_hline(yintercept = 1, color = "black") + 
+  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(Inf, Inf), vjust = c(1, 0),
+                              lab = c("age-structured transmission rate\nlower than homogeneous\n(slowing down with age structure)", "")), 
+                                      #"(speeding up with age structure)\nage-structured transmission rate\nhighter than homogeneous")), 
+            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black") + 
+  geom_point() + 
+  geom_line(aes(linetype = w)) + 
+  scale_linetype_manual(values = c("dashed", "solid")) + 
+  theme_bw()
+
+# equilibrium infections
+bind_rows(
+  equil_vax_full %>%
+  mutate(max_time = max(time), .by = c("v")) %>%
+  filter(time == max_time, variable %in% c("I")) %>% 
+    mutate(w = "POLYMOD"), 
+  equil_vax_flat_full %>%
+    mutate(max_time = max(time), .by = c("v")) %>%
+    filter(time == max_time, variable %in% c("I")) %>% 
+    mutate(w = "flat")) %>%
+  summarize(value = sum(value), .by = c("v", "w")) %>%
+  ggplot(aes(x = v, y = value)) + 
+  geom_point() + 
+  geom_line(aes(linetype = w)) + 
+  labs(x = "vaccination coverage", y = "equilibrium I") +
+  scale_linetype_manual(values = c("dashed", "solid")) + 
+  theme_bw()
+
+# equilibrium mean age
+bind_rows(
+  equil_vax_full %>% 
+  mutate(max_time = max(time), .by = c("v")) %>%
+  filter(time == max_time, variable %in% c("I")) %>%
+    mutate(w = "POLYMOD"), 
+  equil_vax_flat_full %>% 
+    mutate(max_time = max(time), .by = c("v")) %>%
+    filter(time == max_time, variable %in% c("I")) %>%
+    mutate(w = "flat")) %>%
+  mutate(bin_width = bin_width[as.factor(age)]) %>%
+  summarize(mean_age = sum(value*(age-bin_width/2))/sum(value), .by = c("time", "v", "w")) %>%
+  ggplot(aes(x = v, y = mean_age)) +
+  geom_point() + 
+  geom_line(aes(linetype = w)) + 
+  scale_linetype_manual(values = c("dashed", "solid")) + 
+  theme_bw()
+
+# age distributions of S and I
+equil_vax_full %>%
+  mutate(max_time = max(time), .by = c("v")) %>%
+  filter(time == max_time, variable %in% c("S", "I")) %>%
+  ggplot() + 
+  geom_line(aes(x = age, y = value)) + 
+  geom_hline(data = equil_vax_full %>%
+               mutate(max_time = max(time), .by = c("v")) %>%
+               filter(time == max_time, variable %in% c("S", "I")) %>%
+              summarize(mean = mean(value), .by = c("v", "variable")), 
+            aes(yintercept = mean), color = "red") +
+  facet_grid(rows = vars(variable), cols = vars(v), scales = "free") + 
+  theme_bw()
+
+
+#### NOW START AT VAX EQUILIBRIUM AND RELEASE ----------------------------------
+new_IC_polymod_vax = equil_vax_full %>% 
+  filter(time == max(time), variable %in% c("S", "E", "I", "R"), v == 0.6) %>% 
+  arrange(age) %>%
+  mutate(name = paste0(variable, "_", age))
+new_IC_polymod_vax_name = new_IC_polymod_vax %>% pull(name)
+new_IC_polymod_vax = new_IC_polymod_vax %>% pull(value)
+names(new_IC_polymod_vax) = new_IC_polymod_vax_name
+
+new_IC_polymod_vax_flat = equil_vax_flat_full %>% 
+  filter(time == max(time), variable %in% c("S", "E", "I", "R"), v == 0.6) %>% 
+  arrange(age) %>%
+  mutate(name = paste0(variable, "_", age))
+new_IC_polymod_vax_flat_name = new_IC_polymod_vax_flat %>% pull(name)
+new_IC_polymod_vax_flat = new_IC_polymod_vax_flat %>% pull(value)
+names(new_IC_polymod_vax_flat) = new_IC_polymod_vax_flat_name
+
+
+equil_vax_p6 = run_ode(
+  age_classes = age_classes, mort = rep(mort, length(age_classes)),
+  fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
+  compartments = compartments,
+  vax_change_times = c(0), vax_rates = c(0.6),
+  IC_type = "manual", IC_manual = new_IC_polymod_vax, max_t = 100, params = paras, 
+  adjust_beta_flag = FALSE, plot_flag = FALSE)
+
+new_IC_polymod_vax = equil_vax_p6 %>% 
+  filter(time == max(time), variable %in% c("S", "E", "I", "R")) %>% 
+  arrange(age) %>%
+  mutate(name = paste0(variable, "_", age))
+new_IC_polymod_vax_name = new_IC_polymod_vax %>% pull(name)
+new_IC_polymod_vax = new_IC_polymod_vax %>% pull(value)
+names(new_IC_polymod_vax) = new_IC_polymod_vax_name
+
+
+equil_vax_release = run_ode(
+  age_classes = age_classes, mort = rep(mort, length(age_classes)),
+  fert = rep(fert, length(age_classes)), start_pop = start_pop,
+  compartments = compartments,
+  vax_change_times = c(0, 2), vax_rates = c(0.6, 0.1), waifw = W,
+  IC_type = "manual", IC_manual = new_IC_polymod_vax, max_t = 25, params = paras, 
+  adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+  mutate(v = test_v[i])
+
+equil_vax_flat_release = run_ode(
+  age_classes = age_classes, mort = rep(mort, length(age_classes)),
+  fert = rep(fert, length(age_classes)), start_pop = start_pop,
+  compartments = compartments,
+  vax_change_times = c(0, 2), vax_rates = c(0.6, 0.1),
+  IC_type = "manual", IC_manual = new_IC_polymod_vax_flat, max_t = 25, params = paras, 
+  adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+  mutate(v = test_v[i])
+
+
+# beta hats
+p1 = bind_rows(
+  equil_vax_release %>%
+    filter(variable %in% c("BH", "BHi", "BHs")) %>%
+    mutate(w = "POLYMOD"),
+  equil_vax_flat_release %>%
+    filter(variable %in% c("BH", "BHi", "BHs")) %>%
+    mutate(w = "flat")
+) %>%
+  ggplot(aes(x = time, y = value, color = variable)) + 
+  geom_vline(xintercept = 2, color = "black") +
+  geom_hline(yintercept = 1, color = "black") + 
+  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(Inf, Inf), vjust = c(1, 0),
+                              lab = c("age-structured transmission rate\nlower than homogeneous\n(slowing down with age structure)", "")), 
+            #"(speeding up with age structure)\nage-structured transmission rate\nhighter than homogeneous")), 
+            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black") + 
+  # geom_point() + 
+  geom_line(aes(linetype = w)) + 
+  labs(y = "unity beta") +
+  scale_linetype_manual(values = c("dashed", "solid")) + 
+  theme_bw()
+# infections
+p2 = bind_rows(
+  equil_vax_release %>%
+    filter(variable %in% c("I")) %>%
+    mutate(w = "POLYMOD"),
+  equil_vax_flat_release %>%
+    filter(variable %in% c("I")) %>%
+    mutate(w = "flat")
+) %>%
+  summarize(value = sum(value), .by = c("time", "w")) %>%
+  ggplot(aes(x = time, y = value)) + 
+  geom_vline(xintercept = 2, color = "black") +
+  geom_line(aes(linetype = w)) + 
+  labs(y = "infections") + 
+  scale_linetype_manual(values = c("dashed", "solid")) + 
+  theme_bw()
+plot_grid(p1, p2, ncol = 1, align = "v", axis ="lr")
+
+#### TRY WITH JESS'S MATRICES --------------------------------------------------
+xx = findStableStruct(age_classes, fert = rep(fert, length(age_classes)), 
+                      mort = rep(mort, length(age_classes)))
+
+# measles like?
+jcm_results = vector("list", length(waifw))
+paras_jcm = c(mu = 1/50, N = 1, beta0 = 400, beta1 = 0, omega = 0,
+                      sigma = 365/1, gamma = 365/14, vax_pct = 0, delta = 0, p = 0)
+# paras_jcm["N"] = 500000
+
+# R0
+with(as.list(paras_jcm), beta0/(gamma + mu)*(sigma/(sigma + mu)))
+# flatW = scale.Waifw(R0=14, DFE=xx$stable.age*1e6, waifw=matrix(0.0002,length(age.classes),length(age.classes)))
+
+# re-scale Jess's WAIFW matrices to work with my parameters
+waifw2 = waifw
+waifw2[[5]] = unname(waifw2[[5]])
+waifw2 = lapply(waifw2, function(i){i/mean(i)})
+
+lapply(waifw2, melt) %>%
+  bind_rows(.id = "waifw_id") %>%
+  mutate(value_scaled = value/max(value), .by = c("waifw_id")) %>%
+  ggplot(aes(x = Var1, y = Var2, fill = value_scaled)) + 
+  geom_tile() + 
+  facet_wrap(vars(waifw_id)) +
+  scale_fill_viridis_c() + 
+  scale_x_continuous(expand = c(0,0),
+                     breaks = which(age_classes %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
+                     labels = c(2, 4, 6, 8, 10, 30, 50, 70),
+                     name = "age (years)") +
+  scale_y_continuous(expand = c(0,0),
+                     breaks = which(age_classes %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
+                     labels = c(2, 4, 6, 8, 10, 30, 50, 70),
+                     name = "age (years)")
+
+for(i in 1:length(waifw)){
+  print(paste0(i, "/", length(waifw)))
+  jcm_results[[i]] = run_ode(
+    age_classes = age_classes, mort = rep(mort, length(age_classes)),
+    fert = rep(fert, length(age_classes)), start_pop = start_pop,
+    compartments = compartments, w = waifw2[[i]],
+    IC_type = "std", max_t = 50, params = paras_jcm, #, IC_manual = new_IC
+    adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+    mutate(v = test_v[i])
+}
+
+jcm_results_long = bind_rows(jcm_results, .id = "waifw_id")
+
+jcm_results_long %>%
+  filter(variable %in% c("I")) %>%
+  summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
+  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+  geom_line() + 
+  facet_wrap(vars(variable), scales = "free")
+
+jcm_results_long %>%
+  filter(variable %in% c("BH", "BHs", "BHi"), time >10) %>%
+  summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
+  ggplot(aes(x = time, y = value, color = variable)) + 
+  geom_hline(yintercept = 1) + 
+  geom_line() + 
+  facet_wrap(vars(waifw_id)) + 
+  theme_bw()
+
+jcm_results_long %>%
+  filter(variable %in% c("I"), time == 1) %>%
+  ggplot(aes(x = age, y = value))+ 
+  geom_line() + 
+  facet_wrap(vars(waifw_id), scales = "free")
+
