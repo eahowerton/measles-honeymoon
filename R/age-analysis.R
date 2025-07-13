@@ -510,34 +510,116 @@ lapply(waifw2, melt) %>%
                      name = "age (years)")
 
 # do the matching on age-specific incidence 
-scalars = match_on_age_or_inc(age_classes = age_classes, mort =  rep(mort, length(age_classes)), 
+scalars_novax = match_on_age_or_inc(age_classes = age_classes, mort =  rep(mort, length(age_classes)), 
                     fert = rep(fert, length(age_classes)), 
                     start_pop = paras_jcm["N"], compartments = compartments, 
                     params = paras_jcm, waifws = waifw2[-1], plot_flag = TRUE)
+chosen_scalars_novax = scalars_novax %>% filter(variable == "tot_I_diff", best_value == TRUE)
 
-chosen_scalars = scalars %>% filter(variable == "tot_I_diff", best_value == TRUE)
+scalars_v = vector("list", length(test_v))
+scalars_v[[1]] = scalars_novax
 
-
-
-for(i in 1:length(waifw)){
-  print(paste0(i, "/", length(waifw)))
-  paras_tmp = paras_jcm
-  if(i > 1){
-    paras_tmp["beta0"] = paras_tmp["beta0"] * chosen_scalars %>% filter(waifw_id == i) %>% pull(scalar)
-  }
-  jcm_results[[i]] = run_ode(
-    age_classes = age_classes, mort = rep(mort, length(age_classes)),
-    fert = rep(fert, length(age_classes)), start_pop = paras_jcm["N"],
-    compartments = compartments, w = waifw2[[i]],
-    IC_type = "std", max_t = 100, params = paras_tmp, #, IC_manual = new_IC
-    adjust_beta_flag = FALSE, plot_flag = FALSE) #%>%
-    # mutate(v = test_v[i])
+for(i in 2:length(test_v)){
+  print(paste0("V = ", test_v[i]))
+  scalars_v[[i]] = match_on_age_or_inc(age_classes = age_classes, mort =  rep(mort, length(age_classes)), 
+                                       fert = rep(fert, length(age_classes)), 
+                                       start_pop = paras_jcm["N"], compartments = compartments, 
+                                       vax_pct = test_v[i], max_t = 200, 
+                                       params = paras_jcm, waifws = waifw2[-1], plot_flag = TRUE)
 }
+
+scalars_v_full =  bind_rows(scalars_v, .id = "vax_id") %>%
+  mutate(vax_id = as.integer(vax_id)) %>%
+  left_join(data.frame(vax_id = 1:length(test_v), 
+                       v = test_v))
+
+saveRDS(scalars_v_full, "data/output-data/scalars_by_v.rds")
+
+ggplot(data = scalars_v_full %>% filter(variable == "tot_I_diff"), aes(x = scalar, y = value)) + 
+  geom_line() + 
+  geom_point(aes(color = as.factor(best_value)), fill = "white") + 
+  facet_grid(cols = vars(waifw_id), rows = vars(variable, v), scales = "free") +
+  scale_color_manual(values = c("black", "red")) + 
+  theme_bw()
+
+chosen_scalars = scalars_v_full %>% filter(variable == "tot_I_diff", best_value == TRUE)
+
+# show equilibrium values for different vax rates and waifw matrices
+jcm_all_v = vector("list", length(test_v))
+for(j in 1:length(test_v)){
+  print(paste0(j, "/", length(test_v)))
+  tmp = vector("list", length(waifw))
+  for(i in 1:length(waifw)){
+    paras_tmp = paras_jcm
+    if(i > 1){
+      s = chosen_scalars %>% filter(waifw_id == i, v == test_v[j]) %>% pull(scalar)
+      if(is.na(s)){print(paste0("NA SCALAR, SKIPPING (i = ", i)); next}
+      paras_tmp["beta0"] = paras_tmp["beta0"] * s
+    }
+    tmp[[i]] = run_ode(
+      age_classes = age_classes, mort = rep(mort, length(age_classes)),
+      fert = rep(fert, length(age_classes)), start_pop = paras_jcm["N"],
+      compartments = compartments, w = waifw2[[i]],
+      vax_change_times = c(0), vax_rates = c(test_v[j]),
+      IC_type = "std", max_t = 100, params = paras_tmp, #, IC_manual = new_IC
+      adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+      mutate(v = test_v[j], waifw_id = i)
+  }
+  jcm_all_v[[j]] = bind_rows(tmp)
+}
+
+jcm_all_v_long = bind_rows(jcm_all_v)
+
+jcm_all_v_long %>%
+  filter(variable %in% c("I"), time == max(time)) %>%
+  summarize(value = sum(value), .by = c("time", "variable", "waifw_id", "v")) %>%
+  ggplot(aes(x = v, y = value, color = as.factor(waifw_id))) + 
+  geom_point() + 
+  geom_line() + 
+  facet_grid(cols = vars(variable), scales = "free")
+
+jcm_all_v_long %>%
+  filter(variable %in% c("I"), time > max(time)-20) %>%
+  summarize(value = sum(value), .by = c("time", "variable", "waifw_id", "v")) %>%
+  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+  geom_line() + 
+  facet_wrap(vars(v), scales = "free")
+
+jcm_all_v_long %>%
+  filter(variable %in% c("BH", "BHs", "BHi"), time == max(time)) %>%
+  summarize(value = sum(value), .by = c("time", "variable", "waifw_id", "v")) %>%
+  ggplot(aes(x = v, y = value, color = variable)) + 
+  geom_hline(yintercept = 1) + 
+  geom_line() + 
+  facet_wrap(vars(waifw_id)) + 
+  theme_bw()
+
+start_vax = 0.6 
+release_vax = 0.15
+
+for(j in 1:length(test_v)){
+  for(i in 1:length(waifw)){
+    print(paste0(i, "/", length(waifw)))
+    paras_tmp = paras_jcm
+    if(i > 1){
+      paras_tmp["beta0"] = paras_tmp["beta0"] * chosen_scalars %>% filter(waifw_id == i, v == start_vax) %>% pull(scalar)
+    }
+    jcm_results[[i]] = run_ode(
+      age_classes = age_classes, mort = rep(mort, length(age_classes)),
+      fert = rep(fert, length(age_classes)), start_pop = paras_jcm["N"],
+      compartments = compartments, w = waifw2[[i]],
+      vax_change_times = c(0, 75), vax_rates = c(start_vax, release_vax),
+      IC_type = "std", max_t = 100, params = paras_tmp, #, IC_manual = new_IC
+      adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+    mutate(v = test_v[j])
+  }
+}
+
 
 jcm_results_long = bind_rows(jcm_results, .id = "waifw_id")
 
 jcm_results_long %>%
-  filter(variable %in% c("I")) %>%
+  filter(variable %in% c("I"), time > 60) %>%
   summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
   ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
   geom_line() + 

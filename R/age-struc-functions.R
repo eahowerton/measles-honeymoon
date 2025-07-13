@@ -11,7 +11,7 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     # if(t > 1){browser()}
     x = x[1:(length(x)-4)] # remove beta hat variables for calculations
     if(any(x < 0)){
-      if(any(abs(x[which(x<0)]) > 1e-10)){print(paste("X NEG! t = ", t)); print(x[which(x < -1e-7)])}
+      if(any(abs(x[which(x<0)]) > 1e-10)){if(print_warnings_flag){print(paste("X NEG! t = ", t)); print(x[which(x < -1e-7)])}}
       x[which(x<0)] = 0}
     nage = length(age_classes)
     ncomp = length(compartments)
@@ -252,11 +252,12 @@ create_polymod_matrix = function(age_classes, plot_flag = FALSE,
 
 #' should be list
 match_on_age_or_inc = function(age_classes, mort, fert, start_pop, compartments, 
-                               params, waifws, plot_flag = FALSE){
+                               vax_pct = 0, params, waifws, max_t = 100, plot_flag = FALSE){
   # run ODE with flat WAIFW
   flat = run_ode(age_classes = age_classes, mort = mort, fert = fert, 
                  start_pop = start_pop, compartments = compartments, params = params, 
-                 IC_type = "std", max_t = 100, dt = 1/12)
+                 vax_change_times = c(0), vax_rates = c(vax_pct),
+                 IC_type = "std", max_t = max_t, dt = 1/12)
   # get age distribution of cases
   age_dist_target = flat %>% 
     filter(time == max(time), variable %in% c("I")) %>% 
@@ -268,6 +269,7 @@ match_on_age_or_inc = function(age_classes, mort, fert, start_pop, compartments,
     print(paste0("starting waifw ", i, "/", length(waifws)))
     waifw_scalars[[i]] = match_one_waifw(age_classes = age_classes, mort = mort, fert = fert, 
                     start_pop = start_pop, compartments = compartments, params = params,
+                    vax_pct = vax_pct,max_t = max_t,
                     age_dist_flat = age_dist_target, new_waifw = waifws[[i]])
   }
   waifw_scalars2 = bind_rows(waifw_scalars, .id = "waifw_id") %>%
@@ -281,6 +283,7 @@ match_on_age_or_inc = function(age_classes, mort, fert, start_pop, compartments,
       geom_line() + 
       geom_point(aes(color = best_value)) + 
       facet_grid(cols = vars(waifw_id), rows = vars(variable), scales = "free") + 
+      ggtilte(paste0("v = ", vax_pct)) +
       scale_color_manual(values = c("black", "red")) + 
       theme_bw()
     print(p)
@@ -288,8 +291,9 @@ match_on_age_or_inc = function(age_classes, mort, fert, start_pop, compartments,
   return(waifw_scalars2)
 }
 
-match_one_waifw = function(age_classes, mort, fert, start_pop, compartments, params,
-                           age_dist_flat, new_waifw, scalars = exp(seq(-3, 3, 0.25))){
+match_one_waifw = function(age_classes, mort, fert, start_pop, compartments, params, 
+                           age_dist_flat, new_waifw, vax_pct, max_t, 
+                           scalars = exp(seq(-3, 3, 0.25))){
   bin_width = diff(c(0, age_classes))
   flat_mean_age = sum(age_dist_flat*(age_classes-bin_width/2))/sum(age_dist_flat)
   new_waifw_results = data.frame(scalar = scalars, tot_I_diff = NA, mean_age_diff = NA) #abs_age_diff = NA, 
@@ -300,7 +304,8 @@ match_one_waifw = function(age_classes, mort, fert, start_pop, compartments, par
       #this is the chunk of code we want to run
       {run_ode(age_classes = age_classes, mort = mort, fert = fert, 
                start_pop = start_pop, compartments = compartments, params = tmp_pars,
-               waifw = new_waifw, IC_type = "std", max_t = 100, dt = 1/12)
+               vax_change_times = c(0), vax_rates = c(vax_pct),
+               waifw = new_waifw, IC_type = "std", max_t = max_t, dt = 1/12)
         #when it throws an error, the following block catches the error
       }, error = function(msg){
         return(data.frame(time = NA))
