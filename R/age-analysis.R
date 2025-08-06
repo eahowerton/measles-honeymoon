@@ -8,6 +8,7 @@ library(cowplot)
 library(dplyr)
 library(beepr)
 library(fields)
+library(patchwork)
 
 source("R/age-struc-functions.R")
 
@@ -18,7 +19,7 @@ times_long = seq(0, 300, by = 1/365)
 
 no_vax = approxfun(times_long, rep(0, length(times_long)))
 
-paras = c(mu = 1/50, N = 1, beta0 = 1000, beta1 = 0, omega = 0,
+paras = c(mu = 1/50, N = 1, beta0 = 1000, beta1 = 0, omega = 0, delta = 0,
           sigma = 365/8, gamma = 365/5, vax_pct = 0, delta = 0, p = 0)
 
 # R0
@@ -34,7 +35,8 @@ vax_rate_drop = 0.4
 #### TEST WITH ONE COMPARTMENT -------------------------------------------------
 age_classes1 =  c(100)
 rslts1 <- run_ode(
-  age_classes = age_classes1, mort = mort, fert = fert, start_pop = start_pop, 
+  age_classes = age_classes1, mort = rep(paras["mu"], length(age_classes1)), 
+  fert = rep(paras["mu"], length(age_classes1)), start_pop = start_pop, 
   IC_type = "std", max_t = 400, params = paras, compartments = compartments,
   plot_flag = TRUE, plot_title = "1 age class")
 
@@ -42,7 +44,8 @@ new_IC = rslts1 %>% filter(time == max(time), variable %in% c("S", "E", "I", "R"
 names(new_IC) = c("S", "E", "I", "R")
 
 rslts1_v <- run_ode(
-  age_classes = age_classes1, mort = mort, fert = fert, start_pop = start_pop, 
+  age_classes = age_classes1, mort = rep(paras["mu"], length(age_classes1)), 
+  fert = rep(paras["mu"], length(age_classes1)), start_pop = start_pop, 
   IC_type = "std", max_t = 400, params = paras, compartments = compartments,
   vax_change_times = c(0), vax_rates = c(vax_rate_high),
   plot_flag = TRUE, plot_title = "1 age class")
@@ -53,8 +56,8 @@ names(new_IC_highvax) = c("S", "E", "I", "R")
 #### TEST WITH TWO COMPARTMENTS ------------------------------------------------
 age_classes2 = c(20, 40)
 rslts2 <- run_ode(
-  age_classes = age_classes2, mort = rep(mort, length(age_classes2)),
-  fert = rep(fert, length(age_classes2)), start_pop = start_pop, compartments = compartments,
+  age_classes = age_classes2, mort = rep(paras["mu"], length(age_classes2)),
+  fert = rep(paras["mu"], length(age_classes2)), start_pop = start_pop, compartments = compartments,
   IC_type = "manual", IC_manual = new_IC, max_t = 50, params = paras,
   plot_flag = TRUE, plot_title = "2 age classes")
 
@@ -68,8 +71,9 @@ names(bin_width) = age_classes
 
 start.time <- Sys.time()
 rslts3 <- run_ode(
-  age_classes = age_classes, mort = rep(mort, length(age_classes)),
-  fert = rep(fert, length(age_classes)), start_pop = start_pop,
+  age_classes = age_classes, mort = rep(paras["mu"], length(age_classes)),
+  compartments = compartments,
+  fert = rep(paras["mu"], length(age_classes)), start_pop = start_pop,
   IC_type = "manual", IC_manual = new_IC, max_t = 50, params = paras, beep_flag = TRUE,
   plot_flag = TRUE, plot_title = "realistic structure, constant WAIFW")
 Sys.time() - start.time
@@ -80,15 +84,19 @@ vax_rates = c(vax_rate_high, vax_rate_drop)
 
 start.time <- Sys.time()
 rslts3_v <- run_ode(
-  age_classes = age_classes, mort = rep(mort, length(age_classes)),
-  fert = rep(fert, length(age_classes)), start_pop = start_pop, 
+  age_classes = age_classes, mort = rep(paras["mu"], length(age_classes)),
+  fert = rep(paras["mu"], length(age_classes)), start_pop = start_pop, 
   vax_change_times = vax_change_times, vax_rates = vax_rates,
   IC_type = "manual", IC_manual = new_IC_highvax, max_t = 50, params = paras, beep_flag = TRUE,
   plot_flag = TRUE, plot_title = "realistic structure, constant WAIFW")
 Sys.time() - start.time
 
-ggplot(data = rslts4_u %>% filter(variable == "I") %>% summarize(value = sum(value), .by = c("time"))) + 
-  geom_line(aes(x = time, y = value))
+ggplot(data = rslts4_u %>% filter(variable == "I") %>% summarize(value = sum(value), .by = c("time")) %>% mutate(convert_beta = TRUE) %>%
+         # bind_rows(rslts4_n %>% filter(variable == "I") %>% summarize(value = sum(value), .by = c("time")) %>% mutate(convert_beta = FALSE)) %>%
+         bind_rows(rslts1 %>% filter(variable == "I") %>% mutate(convert_beta = "baseline")) %>%
+         filter(time < 50)
+         ) + 
+  geom_line(aes(x = time, y = value, color = convert_beta))
 
 #### TEST WITH POLYMOD CONTACTS ------------------------------------------------
 # now add more realistic mixing with POLYMOD data
@@ -96,24 +104,26 @@ W = create_polymod_matrix(age_classes, plot_flag = TRUE, age_classes_to_label = 
 
 start.time <- Sys.time()
 rslts4_u <- run_ode(
-  age_classes = age_classes, mort = rep(mort, length(age_classes)),
-  fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
-  IC_type = "manual", IC_manual = new_IC, max_t = 50, params = paras, beep_flag = TRUE,
+  age_classes = age_classes, mort = rep(paras["mu"], length(age_classes)),
+  compartments = compartments, 
+  fert = rep(paras["mu"], length(age_classes)), start_pop = start_pop, waifw = W,
+  IC_type = "manual", IC_manual = new_IC, max_t = 200, params = paras, beep_flag = TRUE,
   adjust_beta_flag = TRUE, plot_flag = TRUE, plot_title = "realistic structure, POLYMOD (adjust beta)")
 Sys.time() - start.time
 
 start.time <- Sys.time()
 rslts4_n <- run_ode(
-  age_classes = age_classes, mort = rep(mort, length(age_classes)),
-  fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
+  age_classes = age_classes_jcm, mort = rep(paras["mu"], length(age_classes_jcm)),
+  compartments = compartments, 
+  fert = rep(paras["mu"], length(age_classes_jcm)), start_pop = start_pop, waifw = W,
   IC_type = "manual", IC_manual = new_IC, max_t = 100, params = paras, beep_flag = TRUE,
   adjust_beta_flag = FALSE, plot_flag = TRUE, plot_title = "realistic structure, POLYMOD (don't adjust beta)")
 Sys.time() - start.time
 
 start.time <- Sys.time()
 rslts4_v <- run_ode(
-  age_classes = age_classes, mort = rep(mort, length(age_classes)),
-  fert = rep(fert, length(age_classes)), start_pop = start_pop, waifw = W,
+  age_classes = age_classes, mort = rep(paras["mu"], length(age_classes)),
+  fert = rep(paras["mu"], length(age_classes)), start_pop = start_pop, waifw = W,
   vax_change_times = c(0, 50), vax_rates = vax_rates,
   IC_type = "manual", IC_manual = new_IC_highvax, max_t = 100, params = paras, beep_flag = TRUE,
   adjust_beta_flag = FALSE, plot_flag = TRUE, plot_title = "realistic structure, POLYMOD")
@@ -475,57 +485,58 @@ p2 = bind_rows(
 plot_grid(p1, p2, ncol = 1, align = "v", axis ="lr")
 
 #### TRY WITH JESS'S MATRICES --------------------------------------------------
-xx = findStableStruct(age_classes, fert = rep(fert, length(age_classes)), 
-                      mort = rep(mort, length(age_classes)))
+age_classes_jcm = c(seq(4, 180, 4),seq(240,1200,by=60))/12
+bin_width_jcm = diff(c(0, age_classes_jcm))
+
+mort <- c(rep(0,length(age_classes_jcm)-1),1)
+fert <-  c(rep(0,length(age_classes_jcm)-1),1)
+xx = findStableStruct(age_classes_jcm, fert = fert,
+                      mort = mort)
+
+# xx = findStableStruct(age_classes_jcm, fert = rep(fert, length(age_classes_jcm)), 
+#                       mort = rep(mort, length(age_classes_jcm)))
+
+## series from flat to peaky to diagonal to polymod
+waifw2 = get_waifws(age_classes_jcm)
 
 # measles like?
 jcm_results = vector("list", length(waifw))
 paras_jcm = c(mu = 1/50, N = 1, beta0 = 365, beta1 = 0, omega = 0,
                       sigma = 365/1, gamma = 365/14, vax_pct = 0, delta = 0, p = 0)
 paras_jcm["N"] = 500000
+paras_jcm["delta"] = 1e-4
 
 # R0
 with(as.list(paras_jcm), beta0/(gamma + mu)*(sigma/(sigma + mu)))
-# flatW = scale.Waifw(R0=14, DFE=xx$stable.age*1e6, waifw=matrix(0.0002,length(age.classes),length(age.classes)))
 
-# re-scale Jess's WAIFW matrices to work with my parameters
-waifw2 = waifw
-waifw2[[5]] = unname(waifw2[[5]])
-waifw2 = lapply(waifw2, function(i){i/mean(i)})
+waifw_labs = c("flat", "peak age 5", "peak age 10", "diagonal", "POLYMOD")
+names(waifw_labs) = 1:5
 
 lapply(waifw2, melt) %>%
   bind_rows(.id = "waifw_id") %>%
   mutate(value_scaled = value/max(value), .by = c("waifw_id")) %>%
   ggplot(aes(x = Var1, y = Var2, fill = value_scaled)) + 
   geom_tile() + 
-  facet_wrap(vars(waifw_id)) +
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
   scale_fill_viridis_c() + 
   scale_x_continuous(expand = c(0,0),
-                     breaks = which(age_classes %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
-                     labels = c(2, 4, 6, 8, 10, 30, 50, 70),
+                     # breaks = which(age_classes_jcm %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
+                     # labels = c(2, 4, 6, 8, 10, 30, 50, 70),
                      name = "age (years)") +
   scale_y_continuous(expand = c(0,0),
-                     breaks = which(age_classes %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
-                     labels = c(2, 4, 6, 8, 10, 30, 50, 70),
+                     # breaks = which(age_classes_jcm %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
+                     # labels = c(2, 4, 6, 8, 10, 30, 50, 70),
                      name = "age (years)")
 
-# do the matching on age-specific incidence 
-scalars_novax = match_on_age_or_inc(age_classes = age_classes, mort =  rep(mort, length(age_classes)), 
-                    fert = rep(fert, length(age_classes)), 
-                    start_pop = paras_jcm["N"], compartments = compartments, 
-                    params = paras_jcm, waifws = waifw2[-1], plot_flag = TRUE)
-chosen_scalars_novax = scalars_novax %>% filter(variable == "tot_I_diff", best_value == TRUE)
-
+# do the matching on age-specific incidence
 scalars_v = vector("list", length(test_v))
-scalars_v[[1]] = scalars_novax
-
-for(i in 2:length(test_v)){
+for(i in 1:length(test_v)){
   print(paste0("V = ", test_v[i]))
-  scalars_v[[i]] = match_on_age_or_inc(age_classes = age_classes, mort =  rep(mort, length(age_classes)), 
-                                       fert = rep(fert, length(age_classes)), 
-                                       start_pop = paras_jcm["N"], compartments = compartments, 
+  scalars_v[[i]] = match_on_age_or_inc(age_classes = age_classes_jcm, mort = mort, 
+                                       fert = fert, start_pop = paras_jcm["N"], 
+                                       compartments = compartments, 
                                        vax_pct = test_v[i], max_t = 200, 
-                                       params = paras_jcm, waifws = waifw2[-1], plot_flag = TRUE)
+                                       params = paras_jcm, waifws = waifw2[-1])
 }
 
 scalars_v_full =  bind_rows(scalars_v, .id = "vax_id") %>%
@@ -535,108 +546,458 @@ scalars_v_full =  bind_rows(scalars_v, .id = "vax_id") %>%
 
 saveRDS(scalars_v_full, "data/output-data/scalars_by_v.rds")
 
-ggplot(data = scalars_v_full %>% filter(variable == "tot_I_diff"), aes(x = scalar, y = value)) + 
-  geom_line() + 
-  geom_point(aes(color = as.factor(best_value)), fill = "white") + 
-  facet_grid(cols = vars(waifw_id), rows = vars(variable, v), scales = "free") +
-  scale_color_manual(values = c("black", "red")) + 
-  theme_bw()
+ggplot(data = scalars_v_full, aes(x = v, y = best_scalar))  +
+  geom_line() +
+  geom_point() + 
+  facet_wrap(vars(waifw_id))
 
-chosen_scalars = scalars_v_full %>% filter(variable == "tot_I_diff", best_value == TRUE)
+# ggplot(data = scalars_v_full %>% filter(variable == "tot_I_diff"), aes(x = scalar, y = value)) + 
+#   geom_line() + 
+#   geom_point(aes(color = as.factor(best_value)), fill = "white") + 
+#   facet_grid(cols = vars(waifw_id), rows = vars(variable, v), scales = "free") +
+#   scale_color_manual(values = c("black", "red")) + 
+#   theme_bw()
 
-# show equilibrium values for different vax rates and waifw matrices
+chosen_scalars = scalars_v_full 
+
+# to equilibrium
 jcm_all_v = vector("list", length(test_v))
+
 for(j in 1:length(test_v)){
   print(paste0(j, "/", length(test_v)))
   tmp = vector("list", length(waifw))
   for(i in 1:length(waifw)){
     paras_tmp = paras_jcm
     if(i > 1){
-      s = chosen_scalars %>% filter(waifw_id == i, v == test_v[j]) %>% pull(scalar)
+      s = chosen_scalars %>% filter(waifw_id == i, v == test_v[j]) %>% pull(best_scalar)
       if(is.na(s)){print(paste0("NA SCALAR, SKIPPING (i = ", i)); next}
       paras_tmp["beta0"] = paras_tmp["beta0"] * s
     }
-    tmp[[i]] = run_ode(
-      age_classes = age_classes, mort = rep(mort, length(age_classes)),
-      fert = rep(fert, length(age_classes)), start_pop = paras_jcm["N"],
-      compartments = compartments, w = waifw2[[i]],
-      vax_change_times = c(0), vax_rates = c(test_v[j]),
-      IC_type = "std", max_t = 100, params = paras_tmp, #, IC_manual = new_IC
-      adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
-      mutate(v = test_v[j], waifw_id = i)
+    IC = setup_IC(start_pop = paras_tmp["N"], age_classes_jcm, compartments, fert = fert, 
+                  mort = mort, IC_type = "stable-age") 
+    Fmat <- buildFMatrix(age.classes = age_classes_jcm, fert = fert, ncompartments = length(compartments), time.step = 1)
+    tmp_steady = runsteady(y = IC, times = c(0, 500), func = sir_age_structured, parms = paras_tmp, # runsteady arguments
+                       compartments = compartments, age_classes = age_classes_jcm, mort = mort, fert = fert,
+                       vax_change_times = c(0), vax_rates = c(test_v[j]), waifw = waifw2[[i]],
+                       Fmat = Fmat, adjust_beta_flag = FALSE, print_warnings_flag = FALSE
+      )
+    tmp[[i]] = data.frame(variable = names(tmp_steady$y), 
+                          value = tmp_steady$y, 
+                          time = attributes(tmp_steady)$time,
+                          v = test_v[j], waifw_id = i, s = ifelse(i == 1, 1, s))
   }
   jcm_all_v[[j]] = bind_rows(tmp)
 }
+beep()
 
-jcm_all_v_long = bind_rows(jcm_all_v)
+# run for a few time steps to get beta hat values
+jcm_bh = vector("list", length(test_v))
+
+for(j in 1:length(test_v)){
+  print(paste0(j, "/", length(test_v)))
+  tmp = vector("list", length(waifw))
+  for(i in 1:length(waifw)){
+    paras_tmp = paras_jcm
+    if(i > 1){
+      s = chosen_scalars %>% filter(waifw_id == i, v == test_v[j]) %>% pull(best_scalar)
+      if(is.na(s)){print(paste0("NA SCALAR, SKIPPING (i = ", i)); next}
+      paras_tmp["beta0"] = paras_tmp["beta0"] * s
+    }
+    IC_manual = jcm_all_v_long %>% filter(v == test_v[j], waifw_id == i, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
+    names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
+    IC_manual = IC_manual$value
+    names(IC_manual) = names_IC
+    tmp[[i]] = run_ode(
+      age_classes = age_classes_jcm, mort = mort,
+      fert = fert, start_pop = paras_jcm["N"],
+      compartments = compartments, dt = 1/365,
+      vax_change_times = c(0), vax_rates = c(test_v[j]), waifw = waifw2[[i]],
+      IC_type = "manual", IC_manual = IC_manual, max_t = 2, params = paras_tmp, #, IC_manual = new_IC
+      adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+      mutate(waifw_id = i, v = test_v[j], s = ifelse(i == 1, 1, s))
+  }
+  jcm_bh[[j]] = bind_rows(tmp)
+}
+beep()
+
+bind_rows(jcm_bh) %>%
+  filter(substr(variable,1,1) == "B", time == max(time)) %>%
+  ggplot(aes(x = v, y = log(value), color = variable)) + 
+  geom_hline(yintercept = 0) +
+  geom_line() + 
+  facet_wrap(vars(waifw_id))
+
+bind_rows(jcm_bh) %>%
+  filter(substr(variable,1,1) == "B", time == max(time)) %>%
+  ggplot(aes(x = v, y = log(value), color = as.factor(waifw_id))) + 
+  geom_hline(yintercept = 0) +
+  geom_line() + 
+  scale_color_brewer(palette = "Set1") +
+  facet_wrap(vars(variable))
+
+bind_rows(jcm_bh) %>%
+  filter(substr(variable,1,1) == "S", time == max(time)) %>%
+  summarize(value = sum(value), .by = c('time', "variable", "v", "waifw_id")) %>%
+  ggplot(aes(x = v, y = value, color = variable)) + 
+  geom_hline(yintercept = 0) +
+  geom_line() + 
+  facet_wrap(vars(waifw_id))
+
+ggplot(data = chosen_scalars, aes(x = v, y = diff, color = as.factor(waifw_id))) + 
+  geom_line()
+
+
+bind_rows(jcm_bh) %>%
+  filter(substr(variable,1,1) == "I", time == max(time)) %>%
+  summarize(value = sum(value), .by = c('time', "variable", "v", "waifw_id")) %>%
+  ggplot(aes(x = v, y = value, color = as.factor(waifw_id))) + 
+  geom_line() 
+
+bind_rows(jcm_bh) %>%
+  filter(substr(variable,1,1) == "S") %>%
+  summarize(value = sum(value), .by = c('time', "variable", "v", "waifw_id")) %>%
+  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+  geom_line() +
+  facet_wrap(vars(v))
+  
+  mutate(age = ifelse(substr(variable, 1, 1) == "B", NA, as.double(substr(variable, 3, nchar(variable)))), 
+         variable = ifelse(substr(variable, 1, 1) == "B", substr(variable, 1, 3), substr(variable, 1, 1)))
+
+
+
+bind_rows(jcm_all_v) %>%
+  mutate(age = ifelse(substr(variable, 1, 1) == "B", NA, as.double(substr(variable, 3, nchar(variable)))), 
+         variable = ifelse(substr(variable, 1, 1) == "B", substr(variable, 1, 3), substr(variable, 1, 1)), 
+         fert = "const") %>%
+  bind_rows(bind_rows(jcm_all_v_lastd) %>%
+              mutate(age = ifelse(substr(variable, 1, 1) == "B", NA, as.double(substr(variable, 3, nchar(variable)))), 
+                     variable = ifelse(substr(variable, 1, 1) == "B", substr(variable, 1, 3), substr(variable, 1, 1)), 
+                     fert = "struc")) %>%
+  filter(variable %in% c("S", "E", "I", "R")) %>%
+  mutate(age = round(age, 3)) %>%
+  left_join(data.frame(age = round(age_classes_jcm,3), 
+                       bin_width = bin_width_jcm)) %>%
+  ggplot(aes(x = age, y = value/bin_width, color = as.factor(fert))) + 
+  geom_line() + 
+  facet_grid(cols = vars(v), rows = vars(variable), scales = "free")
+
+
+jcm_all_v_long = bind_rows(jcm_all_v) %>%
+  mutate(age = ifelse(substr(variable, 1, 1) == "B", NA, as.double(substr(variable, 3, nchar(variable)))), 
+         variable = ifelse(substr(variable, 1, 1) == "B", substr(variable, 1, 3), substr(variable, 1, 1)))
 
 jcm_all_v_long %>%
-  filter(variable %in% c("I"), time == max(time)) %>%
-  summarize(value = sum(value), .by = c("time", "variable", "waifw_id", "v")) %>%
+  filter(variable %in% c("I")) %>%
+  summarize(value = sum(value), .by = c("variable", "waifw_id", "v")) %>%
   ggplot(aes(x = v, y = value, color = as.factor(waifw_id))) + 
   geom_point() + 
   geom_line() + 
-  facet_grid(cols = vars(variable), scales = "free")
-
-jcm_all_v_long %>%
-  filter(variable %in% c("I"), time > max(time)-20) %>%
-  summarize(value = sum(value), .by = c("time", "variable", "waifw_id", "v")) %>%
-  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
-  geom_line() + 
-  facet_wrap(vars(v), scales = "free")
-
-jcm_all_v_long %>%
-  filter(variable %in% c("BH", "BHs", "BHi"), time == max(time)) %>%
-  summarize(value = sum(value), .by = c("time", "variable", "waifw_id", "v")) %>%
-  ggplot(aes(x = v, y = value, color = variable)) + 
-  geom_hline(yintercept = 1) + 
-  geom_line() + 
-  facet_wrap(vars(waifw_id)) + 
+  facet_grid(cols = vars(variable), scales = "free") + 
+  scale_color_brewer(palette = "Set1", labels = waifw_labs)  + 
   theme_bw()
 
-start_vax = 0.6 
+p1 = jcm_all_v_long %>% filter(variable == "I") %>%
+  mutate(age = round(age,3)) %>%
+  left_join(data.frame(age = round(age_classes_jcm,3), 
+                       bin_width = bin_width_jcm)) %>%
+  mutate(midpoint = age - bin_width/2) %>%
+  summarize(mean_age = sum(value*midpoint*bin_width)/sum(value*bin_width), 
+            var = sum((midpoint - sum(value*midpoint*bin_width)/sum(value*bin_width))^2*value*bin_width)/sum(value*bin_width),
+            .by = c("v", "waifw_id")) %>%
+  mutate(cv = sqrt(var)/mean_age) %>%
+  melt(c("v", "waifw_id")) %>%
+  filter(variable != "var") %>%
+  ggplot(aes(x = v, y = value, color = as.factor(waifw_id))) + 
+  geom_line(size = 0.8) + 
+  facet_grid(rows = vars(variable), scales = "free") +
+  scale_color_brewer(palette = "Set1", labels = waifw_labs)  + 
+  scale_y_log10() +
+  theme_bw() 
+p1
+
+p2 = jcm_all_v_long %>%
+  filter(variable %in% c("BH", "BHs", "BHi", "BHb")) %>%
+  summarize(value = sum(value)/time, .by = c("variable", "waifw_id", "v")) %>%
+  ggplot(aes(x = v, y = log(value), color = variable, size = variable)) + 
+  geom_hline(yintercept = 0) + 
+  geom_vline(xintercept = c(0.3, 0.75), linetype = "dotted") + 
+  geom_line() + 
+  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(0.5,0.5), vjust = c(1, 0),
+                              waifw_id = 1,
+                              lab = c("\nage-structured beta\nlower than homogeneous\n(slowing down)", "(speeding up)\nage-structured beta\nhigher than homogeneous\n")), 
+            #"(speeding up with age structure)\nage-structured transmission rate\nhighter than homogeneous")), 
+            aes(x = x, y = y, label = lab, vjust = vjust),color = "black", size = 3) + 
+  facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_color_manual(values = c("black", "gray", "red", "blue")) + 
+  scale_size_manual(values = c(1, 0.8, 0.8, 0.8)) +
+  scale_y_continuous(limits = c(-3.5,3.5), name = "log(beta hat)") +
+  theme_bw() + 
+  theme(panel.grid = element_blank())
+
+# now what about waifw 2 vs. waifw 3
+p3 = jcm_all_v_long %>%
+  filter(v %in% c(0.3, 0.75, 0.92), variable %in% c("S", "I")) %>%
+  mutate(age = round(age,3)) %>%
+  left_join(data.frame(age = round(age_classes_jcm,3), 
+                       bin_width = bin_width_jcm)) %>%
+  ggplot(aes(x = age, y = value/bin_width, color = as.factor(waifw_id), alpha = as.factor(v))) +
+  geom_line(data = jcm_all_v_long %>%
+               filter(v %in% c(0.3, 0.75, 0.92), variable %in% c("S", "I")) %>%
+               mutate(age = round(age,3)) %>%
+               left_join(data.frame(age = round(age_classes_jcm,3), 
+                                    bin_width = bin_width_jcm)) %>%
+              mutate(tot_val = sum(value), 
+                     tot_binwidth = sum(bin_width), .by = c("variable", "v")) %>%
+              mutate(const_value = tot_val * bin_width/tot_binwidth),
+             aes(x = age, y = const_value/bin_width, alpha = as.factor(v)), color = "black") +
+  geom_line(size = 0.8) + 
+  facet_grid(cols = vars(waifw_id), rows = vars(variable), scales = "free", 
+             labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_alpha_manual(values = c(0.4, 0.7, 1)) +
+  scale_color_brewer(palette = "Set1", labels = waifw_labs)  + 
+  theme_bw() + 
+  theme(panel.grid.minor = element_blank(), 
+        panel.grid.major.x = element_blank())
+p3
+
+cowplot::plot_grid(p1, p2, p3, align = "v", axis = "lr", ncol = 1, rel_heights = c(0.2, 0.15, 0.2))
+
+jcm_all_v_long %>%
+  # filter(age < 100) %>%
+  summarize(value = sum(value), .by = c("variable", "waifw_id", "v")) %>%
+  filter(variable %in% c("S", "I")) %>%
+  dcast(waifw_id + v ~ variable) %>%
+  ggplot(aes(x = S, y = I)) + 
+  geom_path(aes(group = as.factor(waifw_id)), color = "gray") +
+  geom_point(aes(color = as.factor(v))) + 
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+jcm_all_v_long %>%
+  filter(age < 100) %>%
+  summarize(value = sum(value), .by = c("variable", "waifw_id", "v")) %>%
+  filter(variable == "S") %>%
+  ggplot(aes(x = v, y = value/paras_jcm["N"])) + 
+  geom_line(aes(color = as.factor(waifw_id))) +
+  geom_point(aes(color = as.factor(waifw_id))) + 
+  labs(y = "S") +
+  scale_color_brewer(palette = "Set1", labels = waifw_labs) +
+  theme_bw()
+
+jcm_all_v_long %>%
+  filter(age < 100) %>%
+  summarize(value = sum(value), .by = c("variable", "waifw_id", "v")) %>%
+  filter(variable == "I") %>%
+  ggplot(aes(x = v, y = value)) + 
+  geom_line(aes(color = as.factor(waifw_id))) +
+  geom_point(aes(color = as.factor(waifw_id))) + 
+  theme_bw()
+  
+jcm_all_v_long %>%
+  filter(variable == "S") %>%
+  mutate(age = round(age, 3)) %>%
+  left_join(data.frame(age = round(age_classes_jcm,3), 
+                       bin_width = bin_width_jcm)) %>%
+  ggplot(aes(x = age, y = value/bin_width, color = as.factor(v))) + 
+  geom_line() +
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
+  scale_color_viridis_d() + 
+  theme_bw()
+
+jcm_all_v_long %>%
+  filter(variable == "S") %>%
+  mutate(age = round(age, 3)) %>%
+  left_join(data.frame(age = round(age_classes_jcm,3), 
+                       bin_width = bin_width_jcm)) %>%
+  ggplot(aes(x = age, y = value/bin_width, color = as.factor(waifw_id))) + 
+  geom_line() +
+  facet_wrap(vars(v)) +
+  scale_color_brewer(palette = "Set1", labels = waifw_labs) + 
+  theme_bw()
+
+jcm_all_v_long %>%
+  filter(variable %in% c("S", "E", "I", "R")) %>%
+  summarize(value = sum(value), .by = c("age", "v", "waifw_id")) %>%
+  mutate(age = round(age, 3)) %>%
+  left_join(data.frame(age = round(age_classes_jcm,3), 
+                       bin_width = bin_width_jcm)) %>%
+  filter(age < 100) %>%
+  ggplot(aes(x = age, y = value/bin_width, color = as.factor(waifw_id))) + 
+  geom_line() +
+  facet_wrap(vars(v)) +
+  scale_color_brewer(palette = "Set1", labels = waifw_labs) + 
+  theme_bw()
+    
+
+start_vax = 0.92
 release_vax = 0.15
 
-for(j in 1:length(test_v)){
-  for(i in 1:length(waifw)){
-    print(paste0(i, "/", length(waifw)))
-    paras_tmp = paras_jcm
-    if(i > 1){
-      paras_tmp["beta0"] = paras_tmp["beta0"] * chosen_scalars %>% filter(waifw_id == i, v == start_vax) %>% pull(scalar)
-    }
-    jcm_results[[i]] = run_ode(
-      age_classes = age_classes, mort = rep(mort, length(age_classes)),
-      fert = rep(fert, length(age_classes)), start_pop = paras_jcm["N"],
-      compartments = compartments, w = waifw2[[i]],
-      vax_change_times = c(0, 75), vax_rates = c(start_vax, release_vax),
-      IC_type = "std", max_t = 100, params = paras_tmp, #, IC_manual = new_IC
-      adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
-    mutate(v = test_v[j])
+# show equilibrium values for different vax rates and waifw matrices
+jcm_release = vector("list", length(waifw))
+# IC_release = vector("list", length(waifw))
+for(i in 1:length(waifw)){
+  print(paste0(i, "/", length(waifw)))
+  paras_tmp = paras_jcm
+  if(i > 1){
+    s = chosen_scalars %>% filter(waifw_id == i, v == start_vax) %>% pull(best_scalar)
+    if(is.na(s)){print(paste0("NA SCALAR, SKIPPING (i = ", i)); next}
+    paras_tmp["beta0"] = paras_tmp["beta0"] * s
   }
+  IC_manual = jcm_all_v_long %>% filter(v == start_vax, waifw_id == i, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
+  names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
+  IC_manual = IC_manual$value
+  names(IC_manual) = names_IC
+  # try putting all I individuals in one compartment (say age 5)
+  I_indx = which(substr(names(IC_manual), 1, 1) == "I")
+  tot_I = sum(IC_manual[I_indx])
+  IC_manual[I_indx] = 0
+  IC_manual[which(names(IC_manual) == "I_10.5")] = 1
+  IC_manual[which(names(IC_manual) == "R_10.5")] = IC_manual[which(names(IC_manual) == "R_10.5")] - (tot_I - 1)
+  jcm_release[[i]] = run_ode(
+    age_classes = age_classes_jcm, mort = mort,
+    fert = fert, start_pop = paras_jcm["N"],
+    compartments = compartments, dt = 1/52,
+    vax_change_times = c(0), vax_rates = c(release_vax), waifw = waifw2[[i]],
+    IC_type = "manual", IC_manual = IC_manual, max_t = 10, params = paras_tmp, #, IC_manual = new_IC
+    adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+    mutate(waifw_id = i, s = ifelse(i == 1, 1, s))
 }
+beep()
 
+jcm_release_long = bind_rows(jcm_release)
 
-jcm_results_long = bind_rows(jcm_results, .id = "waifw_id")
+unity_beta_long = jcm_release_long %>%
+  mutate(s = ifelse(waifw_id == 1, 1, s)) %>% # for now to fix error
+  filter(variable %in% c("C", "BHb", "BHs", "BHi")) %>%
+  left_join(jcm_release_long %>%
+              filter(variable %in% c("C", "BHb", "BHs", "BHi"), waifw_id == 1) %>%
+              select(time, variable, value) %>%
+              rename(homog_value = value)) %>%
+  mutate(unity_beta = homog_value/(s*value))
 
-jcm_results_long %>%
-  filter(variable %in% c("I"), time > 60) %>%
-  summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
-  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+ggplot(data = unity_beta_long, aes(x = time, y = log(unity_beta), color = variable)) +
   geom_line() + 
-  facet_wrap(vars(variable), scales = "free")
-
-jcm_results_long %>%
-  filter(variable %in% c("BH", "BHs", "BHi"), time >10) %>%
-  summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
-  ggplot(aes(x = time, y = value, color = variable)) + 
-  geom_hline(yintercept = 1) + 
-  geom_line() + 
-  facet_wrap(vars(waifw_id)) + 
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   theme_bw()
 
-jcm_results_long %>%
-  filter(variable %in% c("I"), time == 1) %>%
-  ggplot(aes(x = age, y = value))+ 
-  geom_line() + 
-  facet_wrap(vars(waifw_id), scales = "free")
+pa = jcm_release_long %>%
+  filter(variable %in% c("I")) %>%
+  summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
+  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+  geom_line(linewidth = 0.8) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_x_continuous(breaks = seq(0,10,2)) + 
+  theme_bw() + 
+  theme(legend.title = element_blank(), 
+        legend.position = "bottom",
+        panel.grid.minor.y = element_blank())
+pb = unity_beta_long %>%
+  filter(variable == "C") %>%
+  ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
+  geom_line(linewidth = 0.8) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_x_continuous(breaks = seq(0,10,2)) + 
+  scale_y_continuous(limits = c(-7.5, 7.5)) +
+  theme_bw() +
+  theme(legend.title = element_blank(), 
+        legend.position = "bottom",
+        panel.grid.minor.y = element_blank())
+pc = jcm_release_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
+  mutate(bin_width = bin_width[as.factor(age)], 
+         value = value/bin_width) %>% 
+  dcast(time + age + waifw_id ~ variable, value.var = "value") %>%
+  ggplot(aes(x = time, y = age)) + 
+  geom_tile(aes(fill = S)) + 
+  geom_point(data = jcm_release_long %>% filter(time %in% seq(0, 10, 0.1), variable == "I", age <= 10) %>%
+               mutate(bin_width = bin_width[as.factor(age)],
+                      I = ifelse(value < 1, NA, value/bin_width)),
+             aes(size = I), color = "white") +
+  facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
+  scale_fill_viridis_c() + 
+  scale_size_continuous(range = c(0,2)) + 
+  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2)) + 
+  scale_y_discrete(expand = c(0,0)) + 
+  theme(legend.position = "bottom",
+        panel.grid.minor = element_blank(), 
+        strip.background = element_blank())
+pd = unity_beta_long %>%
+  ggplot(aes(x = time, y = log(unity_beta), color = variable)) + 
+  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
+                              waifw_id = 1,
+                              lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
+            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3) +
+  geom_hline(yintercept = 0) + 
+  geom_line(linewidth = 0.8) + 
+  facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_color_manual(values = RColorBrewer::brewer.pal(5, "YlOrBr")[2:5], 
+                     labels = c("both homogenous", "homogenous infections", "homogenous susceptibles", "both structured")) +
+  scale_x_continuous(breaks = seq(0,10,2)) + 
+  scale_y_continuous(limits = c(-7.5, 7.5)) +
+  theme_bw() +
+  theme(legend.position = "bottom", 
+        legend.title = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        strip.background = element_blank())
+p1 = (pa + pb) +  plot_layout(guides = "collect") & theme(legend.position = "bottom") 
+p2 = (pc + pd)
+p1/p2 + plot_layout(heights = c(0.2, 0.8))
 
+
+# susceptibles
+ps1 = jcm_release_long %>% 
+  filter(variable %in% c("S"), time == 0) %>%
+  mutate(age = round(age, 3)) %>%
+  left_join(data.frame(age = round(age_classes_jcm,3), 
+                       bin_width = bin_width_jcm)) %>%
+  filter(age < 50) %>%
+  ggplot(aes(x = age, y = value/bin_width, color = as.factor(waifw_id))) + 
+  geom_line() + 
+  geom_point() +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "none")
+ps2 = jcm_release_long %>% 
+  filter(variable %in% c("S"), time == 0) %>%
+  summarise(value = sum(value), .by = c("waifw_id")) %>%
+  ggplot(aes(x = waifw_id, y = value, fill = as.factor(waifw_id))) + 
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw()
+ps1 + ps2
+
+
+# try calculating the new unity beta
+pt1 = jcm_release_long %>%
+  filter(variable == "I") %>%
+  summarize(value = sum(value), .by = c("time", "waifw_id")) %>%
+  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+  geom_line() + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw()
+pt2 = jcm_release_long %>%
+  mutate(s = ifelse(waifw_id == 1, 1, s)) %>% # for now to fix error
+  filter(variable == "C") %>%
+  left_join(jcm_release_long %>%
+              filter(variable == "C", waifw_id == 1) %>%
+              select(time, value) %>%
+              rename(homog_value = value)) %>%
+  mutate(unity_beta = homog_value/(s*value)) %>%
+  ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
+  geom_line() + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_y_continuous(limits = c(-5, 5)) +
+  theme_bw()
+pt1/pt2
+
+
+jcm_release_long %>%
+  mutate(s = ifelse(waifw_id == 1, 1, s)) %>% # for now to fix error
+  filter(variable == "C") %>%
+  left_join(jcm_release_long %>%
+              filter(variable == "C", waifw_id == 1) %>%
+              select(time, value) %>%
+              rename(homog_value = value)) %>%
+  mutate(unity_beta = homog_value/(s*value)) %>% 
+  filter(time > 1 & unity_beta < 1)

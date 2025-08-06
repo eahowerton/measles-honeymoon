@@ -3,13 +3,14 @@
 sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates, Fmat,
                                  fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
   with(as.list(parms),{
+    # print(t)
     # if(any(abs(t - seq(5, 100, 5)) < 1e-2)){
     #   print(t)
     #   }
     # if(abs(t - 0.5) < 1e-4){browser()}
     # print(t)
     # if(t > 1){browser()}
-    x = x[1:(length(x)-4)] # remove beta hat variables for calculations
+    x = x[1:(length(x)-5)] # remove beta hat variables for calculations
     if(any(x < 0)){
       if(any(abs(x[which(x<0)]) > 1e-10)){if(print_warnings_flag){print(paste("X NEG! t = ", t)); print(x[which(x < -1e-7)])}}
       x[which(x<0)] = 0}
@@ -30,12 +31,13 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
     tot_S = sum(x_mat[, "S"])
     homogeneous_s = tot_S*diff(c(0, age_classes))/sum(diff(c(0, age_classes))) # account for differences in age bin width
     homogeneous_i = tot_I*diff(c(0, age_classes))/sum(diff(c(0, age_classes)))
+    # homogeneous_s = tot_S/nage
+    # homogeneous_I = tot_I/nage
     lambda <- waifw%*%(beta/N*(x_mat[, "I"]))
     beta_hat = sum(lambda * x_mat[, "S"])/ ((tot_I * tot_S)/N)
     beta_hat_s = sum(waifw%*%(beta/N*homogeneous_i) * x_mat[, "S"])/ ((tot_I * tot_S)/N) # contribution of heterogeneous susceptibility (i.e., assume constant I)
     beta_hat_i = sum(lambda * homogeneous_s)/ ((tot_I * tot_S)/N) # contribution of heterogeneous infectious (i.e., assume constant S)
     beta_hat_b = sum(waifw%*%(beta/N*homogeneous_i) * homogeneous_s)/ ((tot_I * tot_S)/N) # contribution of heterogeneous mixing (i.e., assume constant S and I)
-    # print(beta/beta_hat)
     if(adjust_beta_flag){
       lambda = lambda * beta/beta_hat
     }
@@ -52,9 +54,9 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
       N_age_out <- rbind(N_age[1:(nrow(N_age)-1),], rep(0, ncomp))
     }
     # calculate age-specific derivatives
-    dS <- - (lambda + mort) * x_mat[, "S"] + omega * x_mat[, "R"] +
+    dS <- - (lambda + mort) * x_mat[, "S"] + omega * x_mat[, "R"] - delta * x_mat[, "S"] +
       N_fert[, "S"] * (1 - v) + N_age_in[, "S"] - N_age_out[, "S"]
-    dE <- lambda*x_mat[, "S"] - (mort + sigma) * x_mat[, "E"] +
+    dE <- lambda*x_mat[, "S"] - (mort + sigma) * x_mat[, "E"] + delta * x_mat[, "S"] +
       N_fert[, "E"] + N_age_in[, "E"] - N_age_out[, "E"]
     dI <- sigma * x_mat[, "E"] - (mort + gamma) * x_mat[, "I"] +
       N_fert[, "I"] + N_age_in[, "I"] - N_age_out[, "I"]
@@ -66,7 +68,11 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
                   nrow = nage, ncol = ncomp)
     der <- c(t(der))
     names(der) <- sapply(age_classes, function(i){paste0(compartments, "_", i)})
-    der <- c(der, BH = beta/beta_hat, BHs = beta/beta_hat_s, BHi = beta/beta_hat_i, BHb = beta/beta_hat_b)
+    der <- c(der, C = sum(lambda*x_mat[, "S"]), BH = beta/beta_hat, BHs = sum(lambda*homogeneous_s), 
+             BHi = sum(waifw%*%(beta/N*homogeneous_i)*x_mat[, "S"]), 
+             BHb = sum(waifw%*%(beta/N*homogeneous_i)*homogeneous_s))
+    #BH = beta/beta_hat, BHs = beta/beta_hat_s, BHi = beta/beta_hat_i, BHb = beta/beta_hat_b)
+    #BH = 1/beta_hat, BHs = 1/beta_hat_s, BHi = 1/beta_hat_i, BHb = 1/beta_hat_b)
     return(list(der))
   })
 }
@@ -183,13 +189,14 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
       IC = IC_manual
     }
   }
-  IC = c(IC, BH = 0, BHs = 0, BHi = 0, BHb = 0)
+  IC = c(IC, C = 0, BH = 0, BHs = 0, BHi = 0, BHb = 0)
   return(IC)
 }
 
 process_results <- function(rslts, plot_flag = FALSE, plot_title = NA, max_t, dt){
   rslts_long <- rslts %>%
-    mutate(BH = c(NA, diff(BH))*(1/dt), 
+    mutate(C = c(NA, diff(C))*(1/dt), 
+           BH = c(NA, diff(BH))*(1/dt), 
            BHs = c(NA, diff(BHs))*(1/dt), 
            BHi = c(NA, diff(BHi))*(1/dt), 
            BHb = c(NA, diff(BHb))*(1/dt)) %>% # change for different dt
@@ -252,82 +259,112 @@ create_polymod_matrix = function(age_classes, plot_flag = FALSE,
 
 #' should be list
 match_on_age_or_inc = function(age_classes, mort, fert, start_pop, compartments, 
-                               vax_pct = 0, params, waifws, max_t = 100, plot_flag = FALSE){
+                               vax_pct = 0, params, waifws, max_t = 100, optim_quantity = "tot_I"){
+  IC = setup_IC(start_pop, age_classes, compartments, mort, fert, IC_type = "stable-age")
+  Fmat <- buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = length(compartments), time.step = 1)
   # run ODE with flat WAIFW
-  flat = run_ode(age_classes = age_classes, mort = mort, fert = fert, 
-                 start_pop = start_pop, compartments = compartments, params = params, 
-                 vax_change_times = c(0), vax_rates = c(vax_pct),
-                 IC_type = "std", max_t = max_t, dt = 1/12)
+  flat = runsteady(y = IC, times = c(0, 500), func = sir_age_structured, parms = params, # runsteady arguments
+            compartments = compartments, age_classes = age_classes, mort = mort, fert = fert,
+            vax_change_times = c(0), vax_rates = c(vax_pct), waifw = matrix(1, length(age_classes), length(age_classes)),
+            Fmat = Fmat, adjust_beta_flag = FALSE, print_warnings_flag = FALSE
+  )
+  which_I = which(compartments == "I")
   # get age distribution of cases
-  age_dist_target = flat %>% 
-    filter(time == max(time), variable %in% c("I")) %>% 
-    arrange(age) %>%
-    pull(value)
+  age_dist_target = flat$y[seq(which_I, length(flat$y)-5, length(compartments))] # assuming I = 3rd compar
   # loop through beta multipliers for all other waifw 
   waifw_scalars = vector("list", length(waifws))
   for(i in 1:length(waifws)){
     print(paste0("starting waifw ", i, "/", length(waifws)))
-    waifw_scalars[[i]] = match_one_waifw(age_classes = age_classes, mort = mort, fert = fert, 
-                    start_pop = start_pop, compartments = compartments, params = params,
-                    vax_pct = vax_pct,max_t = max_t,
-                    age_dist_flat = age_dist_target, new_waifw = waifws[[i]])
-  }
-  waifw_scalars2 = bind_rows(waifw_scalars, .id = "waifw_id") %>%
-    mutate(waifw_id = as.integer(waifw_id) + 1) %>% # assuming in the code, waifw1 = flat (not included in this scalaing analysis)
-    melt(c("scalar", "waifw_id")) %>%
-    mutate(best_value = min(abs(value), na.rm = TRUE), .by = c("waifw_id", "variable")) %>%
-    mutate(best_value = ifelse(abs(value) == best_value, TRUE, FALSE))
-  if(plot_flag){
-    p = ggplot(data = waifw_scalars2, 
-           aes(x = scalar, y = value)) + 
-      geom_line() + 
-      geom_point(aes(color = best_value)) + 
-      facet_grid(cols = vars(waifw_id), rows = vars(variable), scales = "free") + 
-      ggtilte(paste0("v = ", vax_pct)) +
-      scale_color_manual(values = c("black", "red")) + 
-      theme_bw()
-    print(p)
-  }
-  return(waifw_scalars2)
-}
-
-match_one_waifw = function(age_classes, mort, fert, start_pop, compartments, params, 
-                           age_dist_flat, new_waifw, vax_pct, max_t, 
-                           scalars = exp(seq(-3, 3, 0.25))){
-  bin_width = diff(c(0, age_classes))
-  flat_mean_age = sum(age_dist_flat*(age_classes-bin_width/2))/sum(age_dist_flat)
-  new_waifw_results = data.frame(scalar = scalars, tot_I_diff = NA, mean_age_diff = NA) #abs_age_diff = NA, 
-  for(i in 1:length(scalars)){
-    tmp_pars = params
-    tmp_pars["beta0"] = tmp_pars["beta0"]*scalars[i]
-    tmp_out = tryCatch(
-      #this is the chunk of code we want to run
-      {run_ode(age_classes = age_classes, mort = mort, fert = fert, 
-               start_pop = start_pop, compartments = compartments, params = tmp_pars,
-               vax_change_times = c(0), vax_rates = c(vax_pct),
-               waifw = new_waifw, IC_type = "std", max_t = max_t, dt = 1/12)
-        #when it throws an error, the following block catches the error
-      }, error = function(msg){
-        return(data.frame(time = NA))
-      })
-    if(any(is.na(tmp_out$time))){
-      print(paste0("error in scalar of ", scalars[i]))
-      # new_waifw_results[i, "abs_age_diff"] = NA
-      new_waifw_results[i, "tot_I_diff"] = NA
-      new_waifw_results[i, "mean_age_diff"] = NA
+    tmp =  tryCatch(
+    optimize(f = match_one_waifw, tol = 1e-1, interval = c(0, 3), # optim arguments  lower = 0, 
+                                IC = IC, Fmat = Fmat, age_classes = age_classes, mort = mort, fert = fert, 
+                                compartments = compartments, params = params,
+                                vax_pct = vax_pct, max_t = max_t,
+                                age_dist_flat = age_dist_target, new_waifw = waifws[[i]],
+                                optim_quantity = optim_quantity)
+    , error = function(msg){
+      return(NA)#data.frame(minimum = NA, diff = NA))
+    })
+    if(any(is.na(tmp))){
+      waifw_scalars[[i]] = data.frame(best_scalar = NA, 
+                                      diff = NA)
     }
     else{
-      age_dist_new_waifw = tmp_out %>%
-        filter(time == max(time), variable == "I") %>% 
-        arrange(age) %>%
-        pull(value)
-      new_waifw_mean_age = sum(age_dist_new_waifw*(age_classes - bin_width/2))/sum(age_dist_new_waifw)
-      # new_waifw_results[i, "abs_age_diff"] = sum(abs(age_dist_new_waifw - age_dist_flat))
-      new_waifw_results[i, "tot_I_diff"] = sum(age_dist_new_waifw) - sum(age_dist_flat)
-      new_waifw_results[i, "mean_age_diff"] = new_waifw_mean_age - flat_mean_age
+      waifw_scalars[[i]] = data.frame(best_scalar = tmp$minimum, 
+                                      diff = tmp$objective)
     }
   }
-  return(new_waifw_results)
+  return(bind_rows(waifw_scalars, .id = "waifw_id") %>% mutate(waifw_id = as.integer(waifw_id) + 1))
+}
+
+match_one_waifw = function(beta_scalar, age_classes, mort, fert, IC, Fmat,
+                           compartments, params, age_dist_flat, new_waifw, 
+                           vax_pct, max_t, optim_quantity = "tot_I"){
+  tmp_pars = params
+  tmp_pars["beta0"] = tmp_pars["beta0"]*beta_scalar
+  tmp_out = tryCatch(
+    #this is the chunk of code we want to run
+    {runsteady(y = IC, times = c(0, 500), func = sir_age_structured, parms = tmp_pars, # runsteady arguments
+                       compartments = compartments, age_classes = age_classes, mort = mort, fert = fert,
+                       waifw = new_waifw, vax_change_times = c(0), vax_rates = c(vax_pct),
+                       Fmat = Fmat, adjust_beta_flag = FALSE, print_warnings_flag = FALSE
+    )
+      #when it throws an error, the following block catches the error
+    }, error = function(msg){
+      return(data.frame(time = NA))
+    })
+  if(length(unlist(tmp_out)) == 1){
+    print("Numerical error, trying again")
+    tmp_pars = params
+    tmp_pars["beta0"] = tmp_pars["beta0"]*(beta_scalar + 1e-4)
+    tmp_out = tryCatch(
+      #this is the chunk of code we want to run
+      {runsteady(y = IC, times = c(0, 500), func = sir_age_structured, parms = tmp_pars, # runsteady arguments
+                 compartments = compartments, age_classes = age_classes, mort = mort, fert = fert,
+                 waifw = new_waifw, vax_change_times = c(0), vax_rates = c(vax_pct),
+                 Fmat = Fmat, adjust_beta_flag = FALSE, print_warnings_flag = FALSE
+      )
+        #when it throws an error, the following block catches the error
+      }, error = function(msg){
+        return(data.frame(minimum = NA, diff = NA))
+      })
+    if(length(unlist(tmp_out))== 1){return(NA)}
+  }
+  which_I = which(compartments == "I")
+  age_dist_new_waifw = tmp_out$y[seq(which_I, length(tmp_out$y)-5, length(compartments))] # assuming I = 3rd compar
+  if(any(age_dist_new_waifw < 0)){return(1e6*beta_scalar)}
+  if(optim_quantity == "tot_I"){
+    print(paste0("scalar: ", round(beta_scalar,3), " diff: ", round(abs(sum(age_dist_new_waifw) - sum(age_dist_flat)),3)))
+    return(abs(sum(age_dist_new_waifw) - sum(age_dist_flat))) # minimize absolute value of difference
+  }
+  else if(optim_quantity == "mean_age"){
+    bin_width = diff(c(0, age_classes))
+    flat_mean_age = sum(age_dist_flat*(age_classes-bin_width/2))/sum(age_dist_flat)
+    return(abs(new_waifw_mean_age - flat_mean_age))
+  }
+}
+
+get_waifws = function(age_classes, background = 0.001, rescale = TRUE){
+  # constant
+  waifw1 <- matrix(1, length(age_classes), length(age_classes))
+  # centered at age 5
+  waifw2 <- get.smooth.WAIFW(age.class.boundaries = age_classes, 
+                             mu = 5, sig = 0.2, gam = 0.05, delta = background)
+  # cenetered at age 10
+  waifw3 <- get.smooth.WAIFW(age.class.boundaries = age_classes, 
+                             mu = 10, sig = 0.1, gam = 0.01, delta = background)
+  # diagonal(ish)
+  waifw4 <- get.smooth.WAIFW(age.class.boundaries = age_classes, 
+                             mu = 7,sig = 0.6, gam = 0.05, delta = background) 
+  # polymod
+  waifw5 <- get.polymod.WAIFW(age.class.boundaries = age_classes, do.touch = TRUE)
+  waifw = list(waifw1, waifw2, waifw3, waifw4, waifw5)
+  waifw[[5]] = unname(waifw[[5]])
+  if(rescale){
+    # re-scale Jess's WAIFW matrices to work with my parameters
+    waifw = lapply(waifw, function(i){i/mean(i)})
+  }
+  return(waifw)
 }
 
 
