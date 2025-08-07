@@ -1015,159 +1015,72 @@ pq2 = jcm_release_long %>% filter(variable == "I") %>%
         legend.title = element_blank())
 pq0/pq2 + plot_layout(heights = c(0.33, 0.66))
 
-pa = jcm_release_long %>%
-  filter(variable %in% c("I")) %>%
-  summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
-  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
-  geom_line(linewidth = 0.8) + 
-  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2)) + 
-  theme_bw() + 
-  theme(legend.title = element_blank(), 
-        legend.position = "bottom",
-        panel.grid.minor.y = element_blank())
-pb = unity_beta_long %>%
-  filter(variable == "C") %>%
-  ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
-  geom_line(linewidth = 0.8) + 
-  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2)) + 
-  scale_y_continuous(limits = c(-7.5, 7.5)) +
-  theme_bw() +
-  theme(legend.title = element_blank(), 
-        legend.position = "bottom",
-        panel.grid.minor.y = element_blank())
-pc = jcm_release_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
-  mutate(bin_width = bin_width[as.factor(age)], 
-         value = value/bin_width) %>% 
-  dcast(time + age + waifw_id ~ variable, value.var = "value") %>%
-  ggplot(aes(x = time, y = age)) + 
-  geom_tile(aes(fill = S)) + 
-  geom_point(data = jcm_release_long %>% filter(time %in% seq(0, 10, 0.1), variable == "I", age <= 10) %>%
-               mutate(bin_width = bin_width[as.factor(age)],
-                      I = ifelse(value < 1, NA, value/bin_width)),
-             aes(size = I), color = "white") +
-  facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
-  scale_fill_viridis_c() + 
-  scale_size_continuous(range = c(0,2)) + 
-  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2)) + 
-  scale_y_discrete(expand = c(0,0)) + 
-  theme(legend.position = "bottom",
-        panel.grid.minor = element_blank(), 
-        strip.background = element_blank())
-pd = unity_beta_long %>%
-  filter(variable != "BHi") %>%
-  ggplot(aes(x = time, y = log(unity_beta))) + 
-  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
-                              waifw_id = 1,
-                              lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
-            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3) +
-  geom_hline(yintercept = 0) + 
-  geom_line(aes(linetype = variable), linewidth = 0.8) + 
-  facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
-  # scale_color_manual(values = RColorBrewer::brewer.pal(4, "YlOrBr")[2:4], 
-  #                    labels = c("both homogenous", "homogenous susceptibles", "both structured")) + #"homogenous infections", 
-  scale_linetype_manual(values = c("dotted", "twodash", "solid"), 
-                        labels = c("both homogenous", "homogenous susceptibles", "both structured")) + #"homogenous infections", 
-  scale_x_continuous(breaks = seq(0,10,2)) + 
-  scale_y_continuous(limits = c(-7.5, 7.5)) +
-  theme_bw() +
-  theme(legend.position = "bottom", 
-        legend.title = element_blank(),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank(),
-        strip.background = element_blank())
-p1 = (pa + pb) +  plot_layout(guides = "collect") & theme(legend.position = "bottom") 
-p2 = (pc + pd)
-p1/p2 + plot_layout(heights = c(0.2, 0.8))
+# old version of plot
+# pa = jcm_release_long %>%
+#   filter(variable %in% c("I")) %>%
+#   summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
+#   ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+#   geom_line(linewidth = 0.8) + 
+#   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+#   scale_x_continuous(breaks = seq(0,10,2)) + 
+#   theme_bw() + 
+#   theme(legend.title = element_blank(), 
+#         legend.position = "bottom",
+#         panel.grid.minor.y = element_blank())
+# pb = unity_beta_long %>%
+#   filter(variable == "C") %>%
+#   ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
+#   geom_line(linewidth = 0.8) + 
+#   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+#   scale_x_continuous(breaks = seq(0,10,2)) + 
+#   scale_y_continuous(limits = c(-7.5, 7.5)) +
+#   theme_bw() +
+#   theme(legend.title = element_blank(), 
+#         legend.position = "bottom",
+#         panel.grid.minor.y = element_blank())
+# pc = jcm_release_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
+#   mutate(bin_width = bin_width[as.factor(age)], 
+#          value = value/bin_width) %>% 
+#   dcast(time + age + waifw_id ~ variable, value.var = "value") %>%
+#   ggplot(aes(x = time, y = age)) + 
+#   geom_tile(aes(fill = S)) + 
+#   geom_point(data = jcm_release_long %>% filter(time %in% seq(0, 10, 0.1), variable == "I", age <= 10) %>%
+#                mutate(bin_width = bin_width[as.factor(age)],
+#                       I = ifelse(value < 1, NA, value/bin_width)),
+#              aes(size = I), color = "white") +
+#   facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
+#   scale_fill_viridis_c() + 
+#   scale_size_continuous(range = c(0,2)) + 
+#   scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2)) + 
+#   scale_y_discrete(expand = c(0,0)) + 
+#   theme(legend.position = "bottom",
+#         panel.grid.minor = element_blank(), 
+#         strip.background = element_blank())
+# pd = unity_beta_long %>%
+#   filter(variable != "BHi") %>%
+#   ggplot(aes(x = time, y = log(unity_beta))) + 
+#   geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
+#                               waifw_id = 1,
+#                               lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
+#             aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3) +
+#   geom_hline(yintercept = 0) + 
+#   geom_line(aes(linetype = variable), linewidth = 0.8) + 
+#   facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+#   # scale_color_manual(values = RColorBrewer::brewer.pal(4, "YlOrBr")[2:4], 
+#   #                    labels = c("both homogenous", "homogenous susceptibles", "both structured")) + #"homogenous infections", 
+#   scale_linetype_manual(values = c("dotted", "twodash", "solid"), 
+#                         labels = c("both homogenous", "homogenous susceptibles", "both structured")) + #"homogenous infections", 
+#   scale_x_continuous(breaks = seq(0,10,2)) + 
+#   scale_y_continuous(limits = c(-7.5, 7.5)) +
+#   theme_bw() +
+#   theme(legend.position = "bottom", 
+#         legend.title = element_blank(),
+#         panel.grid.major.y = element_blank(),
+#         panel.grid.minor.y = element_blank(),
+#         strip.background = element_blank())
+# p1 = (pa + pb) +  plot_layout(guides = "collect") & theme(legend.position = "bottom") 
+# p2 = (pc + pd)
+# p1/p2 + plot_layout(heights = c(0.2, 0.8))
+# 
 
 
-
-
-
-jcm_release_long %>% filter(variable == "I", time %in% 1:10) %>%
-  mutate(age = round(age,3)) %>%
-  left_join(data.frame(age = round(age_classes_jcm,3), 
-                       bin_width = bin_width_jcm)) %>%
-  ggplot(aes(x = age, y = value/bin_width, color = as.factor(waifw_id)), linetype = as.factor(time), group = interaction(waifw_id, as.factor(time))) + 
-  geom_line(size = 0.8) + 
-  facet_grid(rows = vars(waifw_id), cols = vars(time), scales = "free", labeller = labeller(waifw_id = waifw_labs)) +
-  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  theme_bw()
-
-
-
-bind_rows(
-  equil_vax_full %>% 
-    mutate(max_time = max(time), .by = c("v")) %>%
-    filter(time == max_time, variable %in% c("I")) %>%
-    mutate(w = "POLYMOD"), 
-  equil_vax_flat_full %>% 
-    mutate(max_time = max(time), .by = c("v")) %>%
-    filter(time == max_time, variable %in% c("I")) %>%
-    mutate(w = "flat")) %>%
-  mutate(bin_width = bin_width[as.factor(age)]) %>%
-  summarize(mean_age = sum(value*(age-bin_width/2))/sum(value), .by = c("time", "v", "w")) %>%
-  ggplot(aes(x = v, y = mean_age)) +
-  geom_point() + 
-  geom_line(aes(linetype = w)) + 
-  scale_linetype_manual(values = c("dashed", "solid")) + 
-  theme_bw()
-
-
-# susceptibles
-ps1 = jcm_release_long %>% 
-  filter(variable %in% c("S"), time == 0) %>%
-  mutate(age = round(age, 3)) %>%
-  left_join(data.frame(age = round(age_classes_jcm,3), 
-                       bin_width = bin_width_jcm)) %>%
-  filter(age < 50) %>%
-  ggplot(aes(x = age, y = value/bin_width, color = as.factor(waifw_id))) + 
-  geom_line() + 
-  geom_point() +
-  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  theme_bw() + 
-  theme(legend.position = "none")
-ps2 = jcm_release_long %>% 
-  filter(variable %in% c("S"), time == 0) %>%
-  summarise(value = sum(value), .by = c("waifw_id")) %>%
-  ggplot(aes(x = waifw_id, y = value, fill = as.factor(waifw_id))) + 
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  theme_bw()
-ps1 + ps2
-
-
-# try calculating the new unity beta
-pt1 = jcm_release_long %>%
-  filter(variable == "I") %>%
-  summarize(value = sum(value), .by = c("time", "waifw_id")) %>%
-  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
-  geom_line() + 
-  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  theme_bw()
-pt2 = jcm_release_long %>%
-  mutate(s = ifelse(waifw_id == 1, 1, s)) %>% # for now to fix error
-  filter(variable == "C") %>%
-  left_join(jcm_release_long %>%
-              filter(variable == "C", waifw_id == 1) %>%
-              select(time, value) %>%
-              rename(homog_value = value)) %>%
-  mutate(unity_beta = homog_value/(s*value)) %>%
-  ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
-  geom_line() + 
-  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_y_continuous(limits = c(-5, 5)) +
-  theme_bw()
-pt1/pt2
-
-
-jcm_release_long %>%
-  mutate(s = ifelse(waifw_id == 1, 1, s)) %>% # for now to fix error
-  filter(variable == "C") %>%
-  left_join(jcm_release_long %>%
-              filter(variable == "C", waifw_id == 1) %>%
-              select(time, value) %>%
-              rename(homog_value = value)) %>%
-  mutate(unity_beta = homog_value/(s*value)) %>% 
-  filter(time > 1 & unity_beta < 1)
