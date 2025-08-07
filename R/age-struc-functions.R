@@ -82,6 +82,7 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
 run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, vax_rates = NA, compartments,
                     waifw = NA, IC_type, IC_manual = NA, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
                     print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA, dt = 1/12){
+  # setup
   IC = setup_IC(start_pop, age_classes, compartments, mort, fert, IC_type, IC_manual)
   if(any(is.na(waifw))){
     waifw = matrix(1, length(age_classes), length(age_classes)) 
@@ -128,7 +129,7 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
                              fert =  c(rep(0,66),rep(0.1,7)), time.step = 1){
   nage <- length(age.classes)
   # aging.rate <- time.step/diff(c(0,age.classes))
-  aging.rate <- 1/diff(c(0,age.classes))/365 # for daily time steps
+  aging.rate <- 1/diff(c(0,age.classes))*time.step
   Fmat <- Tmat <- matrix(0,nage,nage)
   for (j in 1:(nage-1)) { 
     Tmat[j,j] <- (1-mort[j]*time.step)*(1-aging.rate[j])
@@ -152,6 +153,22 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
   reprod.value <- Re(eigen(Tmat+Fmat)$vector[1,])
   return(list(stable.age = stable.age, lambda = lambda,
               reprod.value = reprod.value, age.classes = age.classes))
+}
+
+# for R0 pass DFE (stable age distribution) to S
+get_Rt <- function(waifw, S, beta0, gamma, N){
+  S = S/N
+  NGM <- beta0 / gamma * waifw %*% diag(S)
+  # 
+  # NGM <- matrix(0, nrow = length(age_classes_jcm), ncol = length(age_classes_jcm))
+  # for (i in 1:length(age_classes_jcm)) {
+  #   for (j in 1:length(age_classes_jcm)) {
+  #     NGM[i, j] <- waifw[i, j] * beta0 * S[j] / gamma
+  #   }
+  # }
+  eigenvalues <- eigen(NGM)$values
+  R0 <- max(Re(eigenvalues))
+  return(R0)
 }
 
 # std give 2000 infected individuals across all PA and PB
