@@ -830,8 +830,8 @@ jcm_all_v_long %>%
   theme_bw()
     
 
-start_vax = 0.92
-release_vax = 0.8
+start_vax = 0.94
+release_vax = 0.6
 chosen_dt = 1/52
 # show equilibrium values for different vax rates and waifw matrices
 jcm_release = vector("list", length(waifw))
@@ -841,11 +841,11 @@ for(i in 1:length(waifw)){
   # setup parameters
   paras_tmp = paras_jcm
   if(i > 1){
-    s = chosen_scalars %>% filter(waifw_id == i, v == start_vax) %>% pull(best_scalar)
+    s = chosen_scalars %>% filter(waifw_id == i, round(v,3) == start_vax) %>% pull(best_scalar)
     if(is.na(s)){print(paste0("NA SCALAR, SKIPPING (i = ", i)); next}
     paras_tmp["beta0"] = paras_tmp["beta0"] * s
   }
-  IC_manual = jcm_all_v_long %>% filter(v == start_vax, waifw_id == i, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
+  IC_manual = jcm_all_v_long %>% filter(round(v,3) == start_vax, waifw_id == i, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
   names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
   IC_manual = IC_manual$value
   names(IC_manual) = names_IC
@@ -921,8 +921,9 @@ pt2 = unity_beta_long %>%
             aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
   geom_line(data = unity_beta_long %>%
               filter(variable == "C", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.8, color = "black") + 
-  geom_line(linewidth = 0.8) + 
+  geom_line(aes(linetype = variable), linewidth = 0.8) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  guides(color = FALSE) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
   scale_y_continuous(limits = c(-7.5, 7.5), name = "log(beta hat)") +
@@ -965,6 +966,29 @@ pt4 = jcm_release_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
 pt0/pt1/pt2/pt3/pt4
+
+# show different beta hat values
+unity_beta_long %>%
+  # filter(variable == "C") %>%
+  filter(waifw_id != 1) %>%
+  ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
+  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
+                              waifw_id = 2,
+                              lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
+            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
+  geom_hline(yintercept = 0, linewidth = 0.8) +
+  geom_line(aes(linetype = variable), linewidth = 0.8, alpha = 0.7) + 
+  facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  guides(color = FALSE) +
+  scale_color_manual(values = c(RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_linetype_manual(values = c("dotted", "twodash", "dashed", "solid"), labels = c("both homogeneous", "homogeneous I", "homogeneous S", "both structured")) +
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
+  scale_y_continuous(limits = c(-7.5, 7.5), name = "log(beta hat)") +
+  theme_bw() +
+  theme(legend.title = element_blank(), 
+        legend.position = "right",
+        panel.grid.minor.y = element_blank(), 
+        strip.background = element_blank())
 
 
 pq0 = unity_beta_long %>%
