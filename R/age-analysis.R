@@ -915,6 +915,10 @@ pt1 = jcm_release_long %>%
 pt2 = unity_beta_long %>%
   filter(variable == "C") %>%
   ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
+  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
+                              waifw_id = 1,
+                              lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
+            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
   geom_line(data = unity_beta_long %>%
               filter(variable == "C", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.8, color = "black") + 
   geom_line(linewidth = 0.8) + 
@@ -977,21 +981,6 @@ pq0 = unity_beta_long %>%
         legend.position = "none",
         panel.grid.minor.y = element_blank(), 
         strip.background = element_blank())
-# pq1 = jcm_release_long %>% filter(variable %in% c("I")) %>%
-#   mutate(bin_width = bin_width_jcm[as.factor(age)], 
-#          value = value/bin_width) %>% 
-#   summarize(mean_age = sum(value*(age-bin_width/2))/sum(value), .by = c("time", "waifw_id")) %>%
-#   ggplot(aes(x = time, y = mean_age, color = as.factor(waifw_id))) + 
-#   geom_line() +
-#   geom_line(linewidth = 0.8) + 
-#   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-#   scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
-#   scale_y_continuous("mean age") +
-#   theme_bw() +
-#   theme(legend.title = element_blank(), 
-#         legend.position = "none",
-#         panel.grid.minor.y = element_blank(), 
-#         strip.background = element_blank())  
 pq2 = jcm_release_long %>% filter(variable == "I") %>%
   mutate(age = round(age,3)) %>%
   left_join(data.frame(age = round(age_classes_jcm,3), 
@@ -1015,72 +1004,102 @@ pq2 = jcm_release_long %>% filter(variable == "I") %>%
         legend.title = element_blank())
 pq0/pq2 + plot_layout(heights = c(0.33, 0.66))
 
-# old version of plot
-# pa = jcm_release_long %>%
-#   filter(variable %in% c("I")) %>%
-#   summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
-#   ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
-#   geom_line(linewidth = 0.8) + 
-#   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-#   scale_x_continuous(breaks = seq(0,10,2)) + 
-#   theme_bw() + 
-#   theme(legend.title = element_blank(), 
-#         legend.position = "bottom",
-#         panel.grid.minor.y = element_blank())
-# pb = unity_beta_long %>%
-#   filter(variable == "C") %>%
-#   ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
-#   geom_line(linewidth = 0.8) + 
-#   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-#   scale_x_continuous(breaks = seq(0,10,2)) + 
-#   scale_y_continuous(limits = c(-7.5, 7.5)) +
-#   theme_bw() +
-#   theme(legend.title = element_blank(), 
-#         legend.position = "bottom",
-#         panel.grid.minor.y = element_blank())
-# pc = jcm_release_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
-#   mutate(bin_width = bin_width[as.factor(age)], 
-#          value = value/bin_width) %>% 
-#   dcast(time + age + waifw_id ~ variable, value.var = "value") %>%
-#   ggplot(aes(x = time, y = age)) + 
-#   geom_tile(aes(fill = S)) + 
-#   geom_point(data = jcm_release_long %>% filter(time %in% seq(0, 10, 0.1), variable == "I", age <= 10) %>%
-#                mutate(bin_width = bin_width[as.factor(age)],
-#                       I = ifelse(value < 1, NA, value/bin_width)),
-#              aes(size = I), color = "white") +
-#   facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
-#   scale_fill_viridis_c() + 
-#   scale_size_continuous(range = c(0,2)) + 
-#   scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2)) + 
-#   scale_y_discrete(expand = c(0,0)) + 
-#   theme(legend.position = "bottom",
-#         panel.grid.minor = element_blank(), 
-#         strip.background = element_blank())
-# pd = unity_beta_long %>%
-#   filter(variable != "BHi") %>%
-#   ggplot(aes(x = time, y = log(unity_beta))) + 
-#   geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
-#                               waifw_id = 1,
-#                               lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
-#             aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3) +
-#   geom_hline(yintercept = 0) + 
-#   geom_line(aes(linetype = variable), linewidth = 0.8) + 
-#   facet_grid(rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
-#   # scale_color_manual(values = RColorBrewer::brewer.pal(4, "YlOrBr")[2:4], 
-#   #                    labels = c("both homogenous", "homogenous susceptibles", "both structured")) + #"homogenous infections", 
-#   scale_linetype_manual(values = c("dotted", "twodash", "solid"), 
-#                         labels = c("both homogenous", "homogenous susceptibles", "both structured")) + #"homogenous infections", 
-#   scale_x_continuous(breaks = seq(0,10,2)) + 
-#   scale_y_continuous(limits = c(-7.5, 7.5)) +
-#   theme_bw() +
-#   theme(legend.position = "bottom", 
-#         legend.title = element_blank(),
-#         panel.grid.major.y = element_blank(),
-#         panel.grid.minor.y = element_blank(),
-#         strip.background = element_blank())
-# p1 = (pa + pb) +  plot_layout(guides = "collect") & theme(legend.position = "bottom") 
-# p2 = (pc + pd)
-# p1/p2 + plot_layout(heights = c(0.2, 0.8))
-# 
 
+#### RELEASE (WITH AGE STRUCTURE) FROM EVERY END VALUE -------------------------
+chosen_dt = 1/52
+chosen_start_vals = test_v[c(9)] #6, 8, 10
+sim_all_release = vector("list", length(chosen_start_vals))
+for(i in 1:length(chosen_start_vals)){
+  print(paste0(i, "/", length(chosen_start_vals)))
+  start_vax = chosen_start_vals[i]
+  new_end_vals = test_v[c(1, 3, 5, 7)]
+  new_end_vals = new_end_vals[new_end_vals < start_vax]
+  tmp1 = vector("list", length(new_end_vals))
+ for(j in 1:length(new_end_vals)){
+   release_vax = new_end_vals[j]
+   print(paste0(j, "/", length(new_end_vals)))
+   tmp2 = vector("list", length(waifw2))
+   for(k in 1:length(waifw2)){
+     print(paste0(k, "/", length(waifw2)))
+     paras_tmp = paras_jcm
+     if(k > 1){
+       s = chosen_scalars %>% filter(waifw_id == k, v == start_vax) %>% pull(best_scalar)
+       if(is.na(s)){print(paste0("NA SCALAR, SKIPPING (k = ", k)); next}
+       paras_tmp["beta0"] = paras_tmp["beta0"] * s
+     }
+     IC_manual = jcm_all_v_long %>% filter(v == start_vax, waifw_id == k, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
+     names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
+     IC_manual = IC_manual$value
+     names(IC_manual) = names_IC
+     # try putting all I individuals in one compartment (say age 5)
+     I_indx = which(substr(names(IC_manual), 1, 1) == "I")
+     tot_I = sum(IC_manual[I_indx])
+     IC_manual[I_indx] = 0
+     IC_manual[which(names(IC_manual) == "I_5.5")] = 1
+     IC_manual[which(names(IC_manual) == "R_5.5")] = IC_manual[which(names(IC_manual) == "R_5.5")] - (tot_I - 1)
+     tmp2[[k]] = run_ode(
+       age_classes = age_classes_jcm, mort = mort,
+       fert = fert, start_pop = paras_jcm["N"],
+       compartments = compartments, dt = chosen_dt,
+       vax_change_times = c(0), vax_rates = c(release_vax), waifw = waifw2[[k]],
+       IC_type = "manual", IC_manual = IC_manual, max_t = 8, params = paras_tmp, #, IC_manual = new_IC
+       adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+       mutate(waifw_id = k, s = ifelse(k == 1, 1, s), start_vax = start_vax, release_vax = release_vax)
+   }
+   tmp1[[j]] = bind_rows(tmp2)
+ } 
+  sim_all_release[[i]] = bind_rows(tmp1)
+}
+beep()
+
+sim_all_release_long = bind_rows(sim_all_release)
+
+unity_beta_long = sim_all_release_long %>%
+  filter(variable %in% c("C", "BHb", "BHs", "BHi")) %>%
+  left_join(sim_all_release_long %>%
+              filter(variable %in% c("C", "BHb", "BHs", "BHi"), waifw_id == 1) %>%
+              select(time, start_vax, release_vax, variable, value) %>%
+              rename(homog_value = value)) %>%
+  mutate(unity_beta = homog_value/(s*value))
+
+Rt_long = sim_all_release_long %>% 
+  filter(variable == "S") %>%
+  summarize(Rt = get_Rt(waifw2[[waifw_id]], value, paras_jcm["beta0"]*mean(s), paras_jcm["gamma"], paras_jcm["N"]), .by = c("time", "waifw_id", "start_vax", "release_vax"))
+
+
+p1 = sim_all_release_long %>%
+  filter(variable == "I", release_vax %in% c(0, 0.3, 0.6, 0.9)) %>% 
+  summarize(value = sum(value), .by = c("time", "waifw_id", "start_vax", "release_vax")) %>%
+  ggplot(aes(x = time, y = value, color = as.factor(waifw_id), alpha = as.factor(-release_vax))) + 
+  geom_line(linewidth = 0.8) + 
+  facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  guides(color = FALSE) +
+  scale_alpha_discrete(name = "release vax", range = c(0.4, 1)) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw()
+p2 = ggplot(data = unity_beta_long %>% filter(variable == "C", release_vax %in% c(0, 0.3, 0.6, 0.9)), 
+       aes(x = time, y = log(unity_beta), color = as.factor(waifw_id), alpha = as.factor(-release_vax))) + 
+  geom_hline(yintercept = 0, linewidth = 0.8) +
+  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(8,8), vjust = c(1, 0),
+                              waifw_id = 1,
+                              lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
+            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
+  geom_line(linewidth = 0.8) + 
+  facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  guides(color = FALSE) +
+  scale_alpha_discrete(name = "release vax", range = c(0.4, 1)) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_y_continuous(limits = c(-9, 9)) +
+  theme_bw()
+p3 = Rt_long %>% 
+  filter(release_vax %in% c(0, 0.3, 0.6, 0.9)) %>%
+  ggplot(aes(x = time, y = Rt, color = as.factor(waifw_id), alpha = as.factor(-release_vax))) + 
+  geom_hline(yintercept = 1, linetype = "dotted") + 
+  geom_line() + 
+  guides(color = FALSE) +
+  facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_alpha_discrete(name = "release vax", range = c(0.4, 1)) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw()
+p1/p2/p3
 
