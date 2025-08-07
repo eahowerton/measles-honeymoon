@@ -60,8 +60,54 @@ We can also rewrite this equation to show us the relationship between prior vacc
 \begin{align}
     t &= \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{v_0 - (1-v)}\Big) \\
     v_0 &= v - e^{-\mu t} \Big(1/R_0 - (1-v)\Big) \\
-    v_0 &= e^{-\mu t}(1-1/R_0) + (1+e^{-\mu t})v \\
+    v_0 &= e^{-\mu t}(1-1/R_0) + (1+e^{-\mu t})v
 \end{align}
 
+\section{Unity beta and the effect of age structure}
+Age structured dynamics are known to be important for a range of infectious disease, and we will consider how this affects the honeymoon period. In particular, we will use a theoretical quantity called ``unity beta"  to explore these effects. 
+
+First we outline the unity beta calculation. Consider an age-structured transmission process that is governed by heterogeneous contacts between age groups, where the number of new infections in the age structured model is
+
+\begin{align}
+    \text{age-structured infections} &=  \frac{\beta}{N}\sum_{i=1}^{n}\sum_{i=j}^{n} \theta_{i,j} S_i I_j \\
+    &= \frac{\beta}{kN}\sum_{i=1}^{n}\sum_{i=j}^{n} \theta_{i,j} S_i I_j 
+\end{align}
+
+\noindent
+where $\theta_{i,j}$ is the contact rate between age groups $i$ and $j$ and $k$ is the quantity called ``unity beta" (i.e., the scalar on $\beta$ such that the number of new infections in the age-structured model is equal to the number of new infections in a non-age-structured model). Then, 
+
+$$
+k = \frac{\sum_{i=1}^{n}\sum_{i=j}^{n} \theta_{i,j} S_i I_j}{\sum_{i=1}^{n}S_i\sum_{i=j}^{n}I_j}
+$$
+
+\noindent
+where $1/k$ is the multiplier on the transmission rate. Thus, if $1/k > 1$ then $\lambda_{\text{hom}} > \lambda_{\text{het}}$ and the age-structured dynamics are slow relative to the homogenous dynamics.
+
+However, in the analysis, we do something slightly different. For the same transmission rate, different WAIFW matrices can yield different numbers of infections at equilibrium. Thus, we calculated a scalar $c$ such that the number of infections at equilibrium in the age-structured model is equal to the number of infections in the non-age-structured model (i.e., $\beta_{\text{hom}} = c\beta_{\text{het}}$). 
+
+If we calculate unity beta directly in this case, we are getting the transmission scalar to equate with a homogeneous model \textit{with the same transmission rate}, $c\beta_{\text{het}}$. But we are actually interested in finding the transmission scalar to equate with a homogeneous model \textit{with the same number of infections at equilibrium}, $\beta_{\text{hom}}$. Thus, we have to adjust unity beta to account for the difference in trnasmission rate and the difference in the total number of susceptible individuals at equilibrium (also note, we find the scalar numerically, so there will be slight differences in number of infections as well). 
+
+Thus, we have
+
+\begin{align}
+    \text{age-structured infections} &=  \frac{\beta c}{N}\sum_{i=1}^{n}\sum_{i=j}^{n} \theta^{\text{het}}_{i,j} S^{\text{het}}_i I^{\text{het}}_j \\
+    \text{homogenous infections} &=  \frac{\beta}{N}\sum_{i=1}^{n}\sum_{i=j}^{n} \theta^{\text{hom}}_{i,j} S^{\text{hom}}_i I^{\text{hom}}_j
+\end{align}
+
+\noindent
+WLOG, let $\theta^{\text{hom}}_{i,j} = 1$ for all $i,j$. We can then equate these two quantities with unity beta scalar $k$: 
+
+\begin{align}
+    \frac{\beta}{N}\sum_{i=1}^{n}\sum_{i=j}^{n} S^{\text{hom}}_i I^{\text{hom}}_j &= k\frac{\beta c}{N}\sum_{i=1}^{n}\sum_{i=j}^{n} \theta^{\text{het}}_{i,j} S^{\text{het}}_i I^{\text{het}}_j
+\end{align}
+
+\noindent
+where
+
+\begin{align}
+    k = \frac{\sum_{i=1}^{n} S^{\text{hom}}_i  \sum_{i=j}^{n} I^{\text{hom}}_j}{c\sum_{i=1}^{n}\sum_{i=j}^{n} \theta^{\text{het}}_{i,j} S^{\text{het}}_i I^{\text{het}}_j}
+\end{align}
+
+This is a scaled ratio of the number of new infections in the homogenous model to the number of new infections in the age-structured model. Interpretation is the same as the unity beta above, and showing on the log scale allows for equal visual comparison between n-fold reductions and increases in transmssion rate.
 
 \end{document}
