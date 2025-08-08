@@ -620,6 +620,27 @@ for(j in 1:length(test_v)){
 }
 beep()
 
+unity_beta_stable = bind_rows(jcm_bh) %>%
+  mutate(s = ifelse(waifw_id == 1, 1, s)) %>% # for now to fix error
+  filter(variable %in% c("C", "BHb", "BHs", "BHi")) %>%
+  left_join(bind_rows(jcm_bh) %>%
+              filter(variable %in% c("C", "BHb", "BHs", "BHi"), waifw_id == 1) %>%
+              select(time, variable, v, value) %>%
+              rename(homog_value = value)) %>%
+  mutate(unity_beta = homog_value/(s*value))
+
+ggplot(data = unity_beta_stable %>% filter(time == max(time), variable == "C"), 
+       aes(x = v, y = log(unity_beta), color = as.factor(waifw_id))) + 
+  geom_point() + 
+  geom_line() + 
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_y_continuous(limits = c(-1.5, 1.5)) +
+  theme_bw() + 
+  theme(legend.position = "none")
+  
+
+
 bind_rows(jcm_bh) %>%
   filter(substr(variable,1,1) == "B", time == max(time)) %>%
   ggplot(aes(x = v, y = log(value), color = variable)) + 
@@ -830,7 +851,7 @@ jcm_all_v_long %>%
   theme_bw()
     
 
-start_vax = 0.94
+start_vax = 0.92
 release_vax = 0.6
 chosen_dt = 1/52
 # show equilibrium values for different vax rates and waifw matrices
@@ -970,23 +991,22 @@ pt0/pt1/pt2/pt3/pt4
 # show different beta hat values
 unity_beta_long %>%
   # filter(variable == "C") %>%
-  filter(waifw_id != 1) %>%
-  ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
+  filter(waifw_id != 1, start_vax == 0.92, release_vax == 0.6) %>%
+  ggplot(aes(x = time, y = log(unity_beta))) + 
   geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
                               waifw_id = 2,
                               lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
             aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
   geom_hline(yintercept = 0, linewidth = 0.8) +
-  geom_line(aes(linetype = variable), linewidth = 0.8, alpha = 0.7) + 
+  geom_line(aes(color = variable), linewidth = 0.8, alpha = 0.7) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
-  guides(color = FALSE) +
-  scale_color_manual(values = c(RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_linetype_manual(values = c("dotted", "twodash", "dashed", "solid"), labels = c("both homogeneous", "homogeneous I", "homogeneous S", "both structured")) +
+  scale_color_discrete(labels = c("both homogeneous", "homogeneous I", "homogeneous S", "both structured")) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
   scale_y_continuous(limits = c(-7.5, 7.5), name = "log(beta hat)") +
   theme_bw() +
   theme(legend.title = element_blank(), 
-        legend.position = "right",
+        legend.key.width = unit(1, "cm"),
+        legend.position = "bottom",
         panel.grid.minor.y = element_blank(), 
         strip.background = element_blank())
 
