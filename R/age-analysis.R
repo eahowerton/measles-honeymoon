@@ -875,7 +875,7 @@ for(i in 1:length(waifw)){
   tot_I = sum(IC_manual[I_indx])
   IC_manual[I_indx] = 0
   IC_manual[which(names(IC_manual) == "I_5.5")] = 1
-  IC_manual[which(names(IC_manual) == "R_5.5")] = IC_manual[which(names(IC_manual) == "R_10.5")] - (tot_I - 1)
+  IC_manual[which(names(IC_manual) == "R_5.5")] = IC_manual[which(names(IC_manual) == "R_5.5")] - (tot_I - 1)
   jcm_release[[i]] = run_ode(
     age_classes = age_classes_jcm, mort = mort,
     fert = fert, start_pop = paras_jcm["N"],
@@ -1163,3 +1163,81 @@ Rt_long %>%
   theme_bw() +
   theme(legend.position = "bottom", 
         legend.title = element_blank())
+
+
+#### NOW TAKE EACH WAIFW AND RELEASE WITHOUT ANY INFECTIONS, CALCULATE RT ------
+chosen_dt = 1/52
+chosen_start_vals = test_v[c(8, 9, 10)] #6, 8, 10
+sim_all_release_noI = vector("list", length(chosen_start_vals))
+for(i in 1:length(chosen_start_vals)){
+  print(paste0("i: ", i, "/", length(chosen_start_vals)))
+  start_vax = chosen_start_vals[i]
+  new_end_vals = test_v#[c(1, 3, 5, 7)]
+  new_end_vals = new_end_vals[new_end_vals < start_vax]
+  tmp1 = vector("list", length(new_end_vals))
+  for(j in 1:length(new_end_vals)){
+    release_vax = new_end_vals[j]
+    print(paste0("j: ", j, "/", length(new_end_vals)))
+    tmp2 = vector("list", length(waifw2))
+    for(k in 1:length(waifw2)){
+      print(paste0("k: ", k, "/", length(waifw2)))
+      paras_tmp = paras_jcm
+      paras_tmp["delta"] = 0 # no additional importation for this one...
+      if(k > 1){
+        s = chosen_scalars %>% filter(waifw_id == k, v == start_vax) %>% pull(best_scalar)
+        if(is.na(s)){print(paste0("NA SCALAR, SKIPPING (k = ", k)); next}
+        paras_tmp["beta0"] = paras_tmp["beta0"] * s
+      }
+      IC_manual = jcm_all_v_long %>% filter(v == start_vax, waifw_id == k, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
+      names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
+      IC_manual = IC_manual$value
+      names(IC_manual) = names_IC
+      # try putting all I individuals in one compartment (say age 5)
+      E_indx = which(substr(names(IC_manual), 1, 1) == "E")
+      I_indx = which(substr(names(IC_manual), 1, 1) == "I")
+      tot_E = sum(IC_manual[E_indx])
+      print(tot_E)
+      tot_I = sum(IC_manual[I_indx])
+      IC_manual[E_indx] = 0
+      IC_manual[I_indx] = 0
+      IC_manual[which(names(IC_manual) == "R_5.5")] = IC_manual[which(names(IC_manual) == "R_5.5")] + tot_I # this is a hack for now (hopefully it won't matter too much, because tot_I is msmall)
+      IC_manual[which(names(IC_manual) == "R_6.5")] = IC_manual[which(names(IC_manual) == "R_6.5")] + tot_E # this is a hack for now (hopefully it won't matter too much, because tot_I is msmall)
+      tmp2[[k]] = run_ode(
+        age_classes = age_classes_jcm, mort = mort,
+        fert = fert, start_pop = paras_jcm["N"],
+        compartments = compartments, dt = chosen_dt,
+        vax_change_times = c(0), vax_rates = c(release_vax), waifw = waifw2[[k]],
+        IC_type = "manual", IC_manual = IC_manual, max_t = 10, params = paras_tmp, #, IC_manual = new_IC
+        adjust_beta_flag = FALSE, plot_flag = FALSE) %>%
+        mutate(waifw_id = k, s = ifelse(k == 1, 1, s), start_vax = start_vax, release_vax = release_vax)
+    }
+    tmp1[[j]] = bind_rows(tmp2)
+  } 
+  sim_all_release_noI[[i]] = bind_rows(tmp1)
+}
+beep()
+
+
+sim_all_release_noI_long = bind_rows(sim_all_release_noI)
+
+Rt_release_noI_long = sim_all_release_noI_long %>% 
+  filter(variable == "S") %>%
+  summarize(Rt = get_Rt(waifw2[[waifw_id]], value, paras_jcm["beta0"]*mean(s), paras_jcm["gamma"], paras_jcm["N"]), .by = c("time", "waifw_id", "start_vax", "release_vax"))
+
+
+
+Rt_release_noI_long %>% 
+  filter(Rt > 1.05, time > 0.05) %>%
+  mutate(min_time = min(time), .by = c("waifw_id", "start_vax", "release_vax")) %>%
+  filter(time == min_time) %>%
+  ggplot(aes(x = release_vax, y = time, color = as.factor(waifw_id))) +
+  geom_point() +
+  geom_line() +
+  facet_grid(cols = vars(start_vax), labeller = label_both) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_x_continuous(name = "release vax %") +
+  scale_y_continuous(name = "time to Re > 1 (years)", limits = c(0, NA), expand = c(0,0)) +
+  theme_bw() +
+  theme(legend.position = "bottom", 
+        legend.title = element_blank())
+
