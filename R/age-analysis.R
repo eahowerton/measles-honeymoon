@@ -1217,14 +1217,9 @@ for(i in 1:length(chosen_start_vals)){
 }
 beep()
 
-
-sim_all_release_noI_long = bind_rows(sim_all_release_noI)
-
 Rt_release_noI_long = sim_all_release_noI_long %>% 
   filter(variable == "S") %>%
   summarize(Rt = get_Rt(waifw2[[waifw_id]], value, paras_jcm["beta0"]*mean(s), paras_jcm["gamma"], paras_jcm["N"]), .by = c("time", "waifw_id", "start_vax", "release_vax"))
-
-
 
 Rt_release_noI_long %>% 
   filter(Rt > 1.05, time > 0.05) %>%
