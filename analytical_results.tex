@@ -6,6 +6,16 @@
 \usepackage{geometry}
 \geometry{a4paper, margin=1in}
 
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,snakes,automata,backgrounds,petri, plotmarks}
+\usetikzlibrary{shapes.geometric, arrows, external} 
+\tikzstyle{state} = [rectangle, rounded corners, minimum width=1cm, minimum height=1cm, text centered, draw=black]
+\tikzstyle{invstate} = [rectangle, rounded corners, minimum width=1cm, minimum height=1cm, text centered, draw=white]
+\tikzstyle{space} = [rectangle, minimum width=4cm, minimum height=4cm]
+\tikzstyle{arrow} = [thick,->, >=stealth]
+
+
+
 \title{Post-vaccination rebounds in the SIR model}
 \author{Emily Howerton}
 \date{\today}
@@ -109,5 +119,89 @@ where
 \end{align}
 
 This is a scaled ratio of the number of new infections in the homogenous model to the number of new infections in the age-structured model. Interpretation is the same as the unity beta above, and showing on the log scale allows for equal visual comparison between n-fold reductions and increases in transmssion rate.
+
+\section{Two-patch model}
+Next, we consider how the honeymoon period is affected by heterogeneity in the population, between vaccinated and unvaccinated individuals. We will use a two-patch model to illustrate this. Consider two subpopulations, representing the vaccinated and unvaccinated groups. Within each subpopulation, we have age-structured SIR dynamics, and $\pi$ governs the amount of mixing between the two groups. We also consider an imperfect vaccine, where $v_e$ is the vaccine efficacy. (Age structure is not shown in the diagram for simplicity).
+
+\begin{center}
+    \begin{tikzpicture}[node distance=1cm]
+        %% states
+        \node (S1)    [state]                         {$S_{1}$};
+        \node (inv0)  [space, right of=S1]            {};
+        \node (inv5)  [space, right of=inv0]          {};
+        \node (inv6)  [space, right of=inv5]          {};
+        \node (I1)    [state, right of=inv6]          {$I_1$};
+        \node (inv1)  [space, right of=I1]            {};
+        \node (inv7)  [space, right of=inv1]          {};
+        \node (inv8)  [space, right of=inv7]          {};
+        \node (R1)    [state, right of=inv8]          {$R_1$};
+        \node (inv2)  [space, below of=S1]            {};
+        \node (S2)    [state, below of=inv2]          {$S_2$};
+        \node (inv3)  [space, right of=S2]            {};
+        \node (inv9)  [space, right of=inv3]          {};
+        \node (inv10) [space, right of=inv9]          {};
+        \node (I2)    [state, right of=inv10]         {$I_2$};
+        \node (inv4)  [space, right of=I2]            {};
+        \node (inv11) [space, right of=inv4]          {};
+        \node (inv12) [space, right of=inv11]         {};
+        \node (R2)    [state, right of=inv12]         {$R_2$};
+        \node (inv13) [space, left of=S1]             {};
+        \node (inv14) [invstate, left of=inv13]       {};
+        \node (inv15) [space, right of=R1]            {};
+        \node (inv16) [invstate, right of=inv15]      {};
+        \node (inv17) [space, left of=S2]             {};
+        \node (inv18) [invstate, left of=inv17]       {};
+        %% arrows
+        \draw [arrow] (S1) -- (I1);
+        \draw [arrow] (I1) -- (R1);
+        \draw [arrow] (S2) -- (I2);
+        \draw [arrow] (I2) -- (R2);
+        \draw [arrow] (inv14) -- (S1);
+        \draw [arrow] (inv16) -- (R1);
+        \draw [arrow] (inv18) -- (S2);
+        %% parameters
+        \node (parS1-I1) 
+              [right of=S1, xshift = 1cm, yshift=0.25cm] {$(\beta I_1 + \pi \beta I_2)/N_1$};
+        \node (parI1-R1) 
+              [right of=I1, xshift = 1cm, yshift=0.25cm] {$\gamma$};
+        \node (parS2-I2) 
+              [right of=S2, xshift = 1cm, yshift=0.25cm] {$(\pi \beta I_1 + \beta I_2)/N_2$};
+        \node (parI2-R2) 
+              [right of=I2, xshift = 1cm, yshift=0.25cm] {$\gamma$};
+        \node (par-S1) 
+              [left of=S1, xshift = -0.5cm, yshift=0.25cm] {$(1-v_e) v \mu$};
+        \node (par-S2) 
+              [left of=S2, xshift = -0.3cm, yshift=0.25cm] {$(1-v) \mu$};
+        \node (par-R1) 
+              [right of=R1, xshift = 0.3cm, yshift=0.25cm] {$v_e v \mu$};
+    \end{tikzpicture}
+\end{center}
+
+We can write the models equations as follows:
+
+\begin{align}
+    \frac{dS_1}{dt} &= (1-v_e)v\mu(N_1 + N_2) - (\beta I_1 + \pi \beta I_2)S_1/N_1 - \mu S_1  \\
+    \frac{dI_1}{dt} &= (\beta I_1 + \pi \beta I_2)S_1/N_1 - (\gamma + \mu) I_1 \\
+    \frac{dR_1}{dt} &= v_e v \mu(N_1 + N_2) + \gamma I_1 - \mu R_1 \\
+    \frac{dS_2}{dt} &= (1-v)\mu(N_1 + N_2) - (\pi \beta I_1 + \beta I_2)S_2/N_2 - \mu S_2 \\
+    \frac{dI_2}{dt} &= (\pi \beta I_1 + \beta I_2)S_2/N_2 - (\gamma + \mu) I_2 \\
+    \frac{dR_2}{dt} &= v\mu (N_1 + N_2) + \gamma I_2 - \mu R_2
+\end{align}
+
+\noindent
+We can represent the jacobian, $J$ as follows:
+
+\[
+J = 
+\begin{pmatrix}
+-\frac{\beta I_1 + \pi \beta I_2}{N_1} - \mu & -\frac{\beta S_1}{N_1} & 0 & 0 & -\frac{\pi \beta S_1}{N_1} & 0 \\
+\frac{\beta I_1 + \pi \beta I_2}{N_1} & \frac{\beta S_1}{N_1} - (\gamma + \mu) & 0 & 0 & \frac{\pi \beta S_1}{N_1} & 0 \\
+0 & \gamma & -\mu & 0 & 0 & 0 \\
+0 & -\frac{\pi \beta S_2}{N_2} & 0 & -\frac{\pi \beta I_1 + \beta I_2}{N_2} - \mu & -\frac{\beta S_2}{N_2} & 0 \\
+0 & \frac{\pi \beta S_2}{N_2} & 0 & \frac{\pi \beta I_1 + \beta I_2}{N_2} & \frac{\beta S_2}{N_2} - (\gamma + \mu)& 0 & \\
+0 & 0 & 0 & 0 & \gamma & -\mu \\
+\end{pmatrix}
+\]
+
 
 \end{document}
