@@ -1,5 +1,4 @@
 #### SIR MODEL -----------------------------------------------------------------
-#' @param rsv_force list of functions for age-specific rsv_force values
 sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates, Fmat,
                                  fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
   with(as.list(parms),{
@@ -81,7 +80,7 @@ sir_age_structured <- function(t, x, parms, compartments, age_classes, mort, vax
 #' max_t in weeks
 run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, vax_rates = NA, compartments,
                     waifw = NA, IC_type, IC_manual = NA, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
-                    print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA, dt = 1/12){
+                    print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA, dt = 1/12, func = sir_age_structured){
   # setup
   IC = setup_IC(start_pop, age_classes, compartments, mort, fert, IC_type, IC_manual)
   if(any(is.na(waifw))){
@@ -89,12 +88,12 @@ run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, v
   }
   # run model
   times = seq(0, max_t, dt)
-  Fmat <- buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = length(compartments), time.step = 1)
+  Fmat <- buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = length(compartments), time.step = 1) # SHOUlD THIS BE DT?
   rslts <- as.data.frame(
     ode(
       y = IC,
       times = times,
-      func = sir_age_structured,
+      func = func,
       compartments = compartments,
       age_classes = age_classes,
       mort = mort, 
@@ -146,8 +145,9 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
   # adjust for negatives?
   if(any(stable.age < 0)){
     stable.age2 = stable.age
-    stable.age[which(stable.age < 0)] = 0
-    stable.age[which(stable.age == max(stable.age))] = stable.age[which(stable.age == max(stable.age))] - (sum(stable.age) - 1) 
+    stable.age2[which(stable.age2 < 0)] = 0
+    stable.age2 = stable.age2/sum(stable.age2)
+    stable.age = stable.age2
   }
   lambda <- Re(eigen(Tmat+Fmat)$value[1])
   reprod.value <- Re(eigen(Tmat+Fmat)$vector[1,])
@@ -156,23 +156,18 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
 }
 
 # for R0 pass DFE (stable age distribution) to S
+# N is a vector of age-specific population sizes
 get_Rt <- function(waifw, S, beta0, gamma, N){
+  if(length(N) != length(S)){print("WARNING: N should be a vector of age-specific population sizes");browser()}
   S = S/N
   NGM <- beta0 / gamma * waifw %*% diag(S)
-  # 
-  # NGM <- matrix(0, nrow = length(age_classes_jcm), ncol = length(age_classes_jcm))
-  # for (i in 1:length(age_classes_jcm)) {
-  #   for (j in 1:length(age_classes_jcm)) {
-  #     NGM[i, j] <- waifw[i, j] * beta0 * S[j] / gamma
-  #   }
-  # }
   eigenvalues <- eigen(NGM)$values
   R0 <- max(Re(eigenvalues))
   return(R0)
 }
 
 # std give 2000 infected individuals across all PA and PB
-setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type = "std", IC_manual = NA){
+setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type = "std", IC_manual = NA, dt){
   # indexing - the rows for maternal, susceptible, etc
   indx_comp = rep(compartments, length(age_classes))
   IC <- rep(0,length(age_classes)*length(compartments))
@@ -183,12 +178,44 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
     IC[which(indx_comp == "S")] = start_pop*0.059/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "I")] = 0.001/length(age_classes)
     IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
+    IC[which(indx_comp == "S1")] = start_pop*0.059/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "I1")] = 0.001/length(age_classes)
+    IC[which(indx_comp == "R1")] = start_pop*0.94/length(age_classes)
+    IC[which(indx_comp == "S2")] = start_pop*0.059/2/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "I2")] = 0.001/2/length(age_classes)
+    IC[which(indx_comp == "R2")] = start_pop*0.94/2/length(age_classes)
+  }
+  if(IC_type == "std-noI"){
+    # setup initial conditions
+    IC[which(indx_comp == "S")] = start_pop*0.06/length(age_classes) 			 # susceptibles
+    IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
+    IC[which(indx_comp == "S1")] = start_pop*0.06/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "R1")] = start_pop*0.94/length(age_classes)
+    IC[which(indx_comp == "S2")] = start_pop*0.06/2/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "R2")] = start_pop*0.94/2/length(age_classes)
   }
   else if(IC_type == "stable-age"){
-    expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = 1)
+    expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = dt)
     IC[which(indx_comp == "S")] = start_pop*0.059*expected_stable$stable.age 			 # susceptibles
     IC[which(indx_comp == "I")] = start_pop*0.001*expected_stable$stable.age 			 # infecteds
     IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
+    IC[which(indx_comp == "S1")] = start_pop*0.059/2*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "I1")] = start_pop*0.001/2*expected_stable$stable.age 			 # infecteds
+    IC[which(indx_comp == "R1")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
+    IC[which(indx_comp == "S2")] = start_pop*0.059/2*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "I2")] = start_pop*0.001/2*expected_stable$stable.age 			 # infecteds
+    IC[which(indx_comp == "R2")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
+    if(any(IC < 0)){browser()}
+    if(abs(sum(IC) - start_pop) > 1e-6){browser()}
+  }
+  else if(IC_type == "stable-age-noI"){
+    expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = dt)
+    IC[which(indx_comp == "S")] = start_pop*0.06*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
+    IC[which(indx_comp == "S1")] = start_pop*0.06/2*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "R1")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
+    IC[which(indx_comp == "S2")] = start_pop*0.06/2*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "R2")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
   }
@@ -196,11 +223,11 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
   else if(IC_type == "manual")
     {
     if(length(IC_manual) == length(compartments)){
-      expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = 1)
-      IC[which(indx_comp == "S")] = start_pop*IC_manual["S"]*expected_stable$stable.age
-      IC[which(indx_comp == "E")] = start_pop*IC_manual["E"]*expected_stable$stable.age
-      IC[which(indx_comp == "I")] = start_pop*IC_manual["I"]*expected_stable$stable.age
-      IC[which(indx_comp == "R")] = start_pop*IC_manual["R"]*expected_stable$stable.age
+      expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = dt)
+      for(i in 1:length(compartments)){
+        tmp_comp = compartments[i]
+        IC[which(indx_comp == tmp_comp)] = start_pop*IC_manual[tmp_comp]*expected_stable$stable.age
+      }
     }
     else if(length(IC_manual == length(IC))){
       IC = IC_manual
@@ -383,5 +410,108 @@ get_waifws = function(age_classes, background = 0.001, rescale = TRUE){
   }
   return(waifw)
 }
+
+# Make a parametric smooth WAIFW
+# from Farrington, J. Amer. Stat. Assoc.; 2005, 100 p370;
+#
+#  parameters -
+#     age class boundries - the upper age limit for each age class in years,
+#     parameters defining the shape:
+#        mu: age of highest contact increases with mu
+#        gam: width around equal age diagonal increases with gam
+#        sig: decreases strength in other diagonal (shrinks high trans int)
+#        delta:  background homogeneous contact rate
+#
+#Returns -
+#   a smooth WAIFW matrix
+get.smooth.WAIFW<-function(age.class.boundaries = (1:120/12),
+                           mu=12.71,sig=0.69, gam=0.17, delta=0){
+  n.age.cats <- length(age.class.boundaries)
+  ages.to.use <- (age.class.boundaries +
+                    c(0,age.class.boundaries[2:n.age.cats-1]))/2
+  #gamma (p371)
+  gam.func <- function(x,y,mu,sig){
+    u <- (x+y)/(sqrt(2))
+    vee <- 1/(sig^2)
+    cval <- (sqrt(2)*mu*(1-(1/vee)))^(vee-1)
+    cval <- cval*exp(1-vee)
+    if (vee<1) cval <- 1
+    gamma <- (1/cval)*(u^(vee-1))*exp((-vee*u)/(sqrt(2)*mu))
+    return(gamma)
+  }
+  #b (p371); set alpha=beta here since always want symmetrical matrix
+  b.func <- function(x,y,gam){
+    u <- (x+y)/(sqrt(2))
+    v <- (x-y)/(sqrt(2))
+    alpha<-beta<-(1-gam)/(2*gam)
+    b <- (((u+v)^(alpha-1))*((u-v)^(beta-1)))/(u^(alpha+beta-2))
+    return(b)
+  }
+  #smooth value
+  beta.func <- function(x,y,mu,sig, gam, delta){
+    gam.func(x,y,mu,sig)*b.func(x,y,gam)+delta
+  }
+  betas <- outer(X=ages.to.use,Y=ages.to.use,
+                 FUN=beta.func,mu=mu,sig=sig,gam=gam,delta=delta)
+  return(betas)
+}
+
+#Make a WAIFW matrix based on Polymod (ignoring rescaling by population
+#size that might be sensible - just use raw contacts)
+#
+#Parameters -
+#   age class boundries - the upper age limit for each age class in YEARS
+#   the desired country - levels possible "all", "IT" "DE" "LU" "NL" "PL" "GB" "FI" "BE",
+#         default is "GB"
+#   bandwidth - desired smooth bandwidth - default=c(3,3)
+#   do.touch - do you want to only include contacts involving touching? default is FALSE
+#Returns -
+#   a WAIFW matrix based on the Polymod results from chosen location with row and col
+#   names indicating age classes
+
+get.polymod.WAIFW <- function (age.class.boundaries = (1:90),
+                               country="GB",
+                               bandwidth=c(3,3),
+                               do.touch=FALSE) {
+  require(KernSmooth)
+  
+  #bring in the polymod data on contacts for UK
+  polymod <- read.csv("data/polymodRaw.csv")
+  if (country!="all") polymod <- polymod[polymod$country==country,]
+  
+  #do touch only
+  if (do.touch) polymod <- polymod[polymod[,"cnt_touch"]==1,]
+  
+  #obtain contacts, remove NAs, and make symmetrical by doubling up
+  x <- cbind(polymod$participant_age, polymod$cnt_age_mean)
+  x <- x[!is.na(x[,1]),]
+  x <- x[!is.na(x[,2]),]
+  x <- rbind(x,cbind(x[,2],x[,1]))
+  
+  #smooth monthly from 0 to 91 yrs of age and get the corresponding ages
+  est<- bkde2D(x, bandwidth=bandwidth,gridsize=c(12*101, 12*101),range.x=list(c((1/24),100),c((1/24),100)))
+  ages.polymod.smooth <- est$x1
+  
+  #image(ages.polymod.smooth,ages.polymod.smooth,est$fhat,xlim=c(0,10),ylim=c(0,10))
+  
+  #find which fitted ages (ages.polymod.smooth) each of the desired lower boundaries is between
+  n.age.cats <- length(age.class.boundaries)
+  lowpoints <-  c(0,age.class.boundaries[2:n.age.cats-1])
+  index <- (findInterval(lowpoints,ages.polymod.smooth));
+  #set very large ages to all be the same as the largest age
+  index[index>=length(ages.polymod.smooth)]=length(ages.polymod.smooth)-1
+  
+  #extract appropriate matrix, taking smoothed estimates for the ranges
+  foi.matrix <- est$fhat[index+1,index+1]
+  
+  #adjust for fact that the width of your age class should not affect the number of contacts you make
+  #foi.matrix <- foi.matrix/diff(c(0,age.class.boundaries))
+  
+  colnames(foi.matrix) <- age.class.boundaries
+  rownames(foi.matrix) <- age.class.boundaries
+  return(foi.matrix)
+}
+
+
 
 
