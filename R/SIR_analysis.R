@@ -12,7 +12,7 @@ sirmod = function(t, y, parameters, vax_pct) {
   R = y[3]
   parameters = c(parameters, v = vax_pct(t))
   with(as.list(parameters), {
-    beta = op[po[[]]]
+    beta = beta0 * (1 + beta1 * cos(2 * pi * (t + p)))
     dS = mu * (1 - v) * N - beta * S * I/N - mu * S - delta * S # additional importations
     dI = beta * S * I/N - (mu + gamma) * I  + delta * S
     dR = mu * N * v + gamma * I - mu * R
@@ -35,10 +35,12 @@ seirmod2 = function(t, y, parameters, vax_pct) {
     dI = sigma * E - (mu + gamma) * I
     dR = mu * N * v + gamma * I - mu * R
     res = c(dS, dE, dI, dR)
+    # browser()
     list(res)
   })
 }
 
+ 
 # times = c(seq(0, 80-1/365, by = 1/365), seq(82, 85, by = 1/(365*5)), seq(85+1/365, 100, by=1/365))
 times = seq(0, 100, by = 1/365)
 times_long = seq(0, 300, by = 1/365)
@@ -51,7 +53,7 @@ paras_sir = c(mu = 1/75, N = 1, beta0 = 750, beta1 = 0.2,
 print(paste0("SIR R0: ", round(paras_sir["beta0"]/(paras_sir["mu"] + paras_sir["gamma"]),2)))
 start = c(S = 0.06, E = 0, I = 0.001, R = 0.939)
 start_sir = c(S = 0.06, I = 0.001, R = 0.939)
-results = as.data.frame(ode(start, times, seirmod2, paras, vax_pct = no_vax))
+results = as.data.frame(ode(start, times_long, seirmod2, paras, vax_pct = no_vax))
 
 ggplot(data = results %>% filter(time > 80), aes(x = time, y = I)) + 
   geom_line()
