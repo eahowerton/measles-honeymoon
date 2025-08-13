@@ -21,26 +21,29 @@ compartments = c("S1", "I1", "R1", "S2", "I2", "R2")
 paras = c(mu = 1/50, N = 1, beta0 = 365, beta1 = 0, omega = 0,
               gamma = 365/14, pi = 1, delta = 0, ve = 0.95, p = 0)
 paras["N"] = 500000
-paras["delta"] = 1e-4
+# paras["delta"] = 1e-4
 
-test_pi = c(0.2, 0.4, 0.6, 0.8, 1)
+test_pi = c(0, 0.1, 0.2, 0.4)#c(0, 0.2, 0.4, 0.6, 0.8, 1)
 
 # R0
 with(as.list(paras), beta0/(gamma + mu))
 
 #### FIND EQUILIBRIUM ACROSS DIFFERENT VALUES OF PI ----------------------------
+start_vax = 0.92
 all_pi_steady = vector("list", length(test_pi))
 for(j in 1:length(test_pi)){ #1
   print(paste0("j: ", j, "/", length(test_pi)))
   tmp = vector("list", length(waifw))
-  for(i in 1:length(waifw)){
+  for(i in 1:1){#length(waifw)){
     print(paste0("i: ", i, "/", length(waifw)))
+    IC_manual = c((1-paras["ve"])*start_vax, 0.001, paras["ve"]*start_vax-0.001, 1-start_vax-0.001, 0.001, 0)
+    names(IC_manual) = compartments
     IC = setup_IC(start_pop = paras_tmp["N"], age_classes, compartments, fert = fert, 
-                  mort = mort, IC_type = "std") 
+                 mort = mort, IC_type = "manual", IC_manual = IC_manual)
     Fmat <- buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = length(compartments), time.step = 1)
     tmp_steady = runsteady(y = IC, times = c(0, 500), func = sirtwopatch_age_structured, parms = paras, # runsteady arguments
                            compartments = compartments, age_classes = age_classes, mort = mort, fert = fert,
-                           vax_change_times = c(0), vax_rates = 0.94, waifw = waifw[[i]],
+                           vax_change_times = c(0), vax_rates = start_vax, waifw = waifw[[i]],
                            Fmat = Fmat, adjust_beta_flag = FALSE, print_warnings_flag = FALSE
     )
     tmp[[i]] = data.frame(variable = names(tmp_steady$y), 
@@ -104,7 +107,7 @@ twopatch_release = vector("list", length(waifw))
 # IC_release = vector("list", length(waifw))
 for(j in 1:length(test_pi)){
   tmp = vector("list", length(waifw))
-  for(i in 1:length(waifw)){
+  for(i in 1:2){#length(waifw)){
     print(paste0(i, "/", length(waifw)))
     # setup parameters
     paras_tmp = paras
@@ -122,8 +125,8 @@ for(j in 1:length(test_pi)){
     I1_indx = which(substr(names(IC_manual), 1, 1) == "I1")
     tot_I = sum(IC_manual[I1_indx])
     IC_manual[I1_indx] = 0
-    IC_manual[which(names(IC_manual) == "I1_5.5")] = 1
-    IC_manual[which(names(IC_manual) == "R1_5.5")] = IC_manual[which(names(IC_manual) == "R_5.5")] + (tot_I - 1)
+    IC_manual[which(names(IC_manual) == "I2_5")] = 1
+    IC_manual[which(names(IC_manual) == "R2_5")] = IC_manual[which(names(IC_manual) == "R2_5")] + (tot_I - 1)
     tmp[[i]] = run_ode(
       age_classes = age_classes, mort = mort,
       fert = fert, start_pop = paras["N"],

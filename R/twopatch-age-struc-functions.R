@@ -19,6 +19,8 @@ sirtwopatch_age_structured <- function(t, x, parms, compartments, age_classes, m
     beta <- beta0*(beta1*cos(2*pi*(t-p))+1)
     N1 = sum(x_mat[, "S1"] + x_mat[, "I1"] + x_mat[, "R1"])
     N2 = sum(x_mat[, "S2"] + x_mat[, "I2"] + x_mat[, "R2"])
+    # N1 = N1 + pi*N2
+    # N2 = pi*N1 + N2
     N1 = ifelse(N1 == 0, 1, N1)
     N2 = ifelse(N2 == 0, 1, N2)
     lambda1 <- waifw%*%(beta/N1*(x_mat[, "I1"] + pi*x_mat[, "I2"]))
@@ -64,6 +66,20 @@ sirtwopatch_age_structured <- function(t, x, parms, compartments, age_classes, m
 get_Rt_twopatch <- function(waifw, S1, S2, N1, N2, beta0, gamma, pi){
   if(any(c(N1, N2) == 0)){return(1e6)}
   S = c(S1/sum(N1), S2/sum(N2))
+  waifw_expand = rbind(
+    cbind(waifw, pi*waifw), # top row
+    cbind(pi*waifw, waifw)  # bottom row
+  )
+  NGM <- beta0 / gamma * waifw_expand %*% diag(S)
+  eigenvalues <- eigen(NGM)$values
+  R0 <- max(Re(eigenvalues))
+  return(R0)
+}
+
+
+get_Rt_twopatch <- function(waifw, S1, S2, N1, N2, beta0, gamma, pi){
+  if(any(c(N1, N2) == 0)){return(1e6)}
+  S = c(S1/(sum(N1) + pi*sum(N2)), S2/(pi*sum(N1) + sum(N2)))
   waifw_expand = rbind(
     cbind(waifw, pi*waifw), # top row
     cbind(pi*waifw, waifw)  # bottom row
