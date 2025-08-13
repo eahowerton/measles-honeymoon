@@ -851,7 +851,7 @@ jcm_all_v_long %>%
   theme_bw()
     
 
-start_vax = 0.92
+start_vax = 0.94
 release_vax = 0.6
 chosen_dt = 1/52
 # show equilibrium values for different vax rates and waifw matrices
@@ -986,7 +986,9 @@ pt4 = jcm_release_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
   theme(legend.position = "none",
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
-pt0/pt1/pt2/pt3/pt4
+pt0/pt1/pt2/pt3/pt4 + 
+  plot_annotation(title = 'release from 94% coverage to 60%')
+ggsave("figures/release_0.94to0.6.pdf", width = 8, height = 10)
 
 # show different beta hat values
 unity_beta_long %>%
@@ -1222,7 +1224,7 @@ Rt_release_noI_long = sim_all_release_noI_long %>%
   summarize(Rt = get_Rt(waifw2[[waifw_id]], value, paras_jcm["beta0"]*mean(s), paras_jcm["gamma"], paras_jcm["N"]), .by = c("time", "waifw_id", "start_vax", "release_vax"))
 
 Rt_release_noI_long %>% 
-  filter(Rt > 1.05, time > 0.05) %>%
+  filter(Rt > 1.05, time > 0.05, start_vax > 0.92) %>%
   mutate(min_time = min(time), .by = c("waifw_id", "start_vax", "release_vax")) %>%
   filter(time == min_time) %>%
   ggplot(aes(x = release_vax, y = time, color = as.factor(waifw_id))) +
@@ -1235,4 +1237,5 @@ Rt_release_noI_long %>%
   theme_bw() +
   theme(legend.position = "bottom", 
         legend.title = element_blank())
+ggsave("figures/honeymoon_time_by_WAIFW.pdf", width = 6, height = 4)
 
