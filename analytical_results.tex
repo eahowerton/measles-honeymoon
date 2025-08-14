@@ -74,6 +74,7 @@ We can also rewrite this equation to show us the relationship between prior vacc
 \end{align}
 
 \section{Unity beta and the effect of age structure}
+\subsection{Unity beta calculation}
 Age structured dynamics are known to be important for a range of infectious disease, and we will consider how this affects the honeymoon period. In particular, we will use a theoretical quantity called ``unity beta"  to explore these effects. 
 
 First we outline the unity beta calculation. Consider an age-structured transmission process that is governed by heterogeneous contacts between age groups, where the number of new infections in the age structured model is
@@ -119,6 +120,28 @@ where
 \end{align}
 
 This is a scaled ratio of the number of new infections in the homogenous model to the number of new infections in the age-structured model. Interpretation is the same as the unity beta above, and showing on the log scale allows for equal visual comparison between n-fold reductions and increases in transmssion rate.
+
+\subsection{$R_0$ of the age-structured: using Next Generation Matrix method}
+To calculate $R_0$ in the age-structured model, we use the Next Generation Matrix (NGM) method outlined in Diekmann et al 1990. To do so, we follow the steps from the Bjornstad book:
+\begin{enumerate}
+    \item Define the infected states, $X = (I_1, I_2, ..., I_n)$ for ages $i = 1, 2, ..., n$
+    \item Define the new infection terms, $\mathcal{F}(X) = \Big[ \frac{\beta}{N}\sum_{i=j}^{n} \theta_{i,j} I_j S_i  \Big]$ for ages $i = 1, 2, ..., n$
+    \item Define all losses out of infected states, $\mathcal{V}^-(X) = \Big[ (\gamma + \mu) I_i \Big]$ repeated for all ages.
+    \item Define all gained transfers between infected states, $\mathcal{V}^+(X) = \Big[ 0 \Big]$ repeated for all ages.
+    \item Define the total losses out of infected states, $\mathcal{V}(X) = \mathcal{V}^-(X) - \mathcal{V}^+(X) = \Big[ (\gamma + \mu) \Big]$.
+    \item Compute the jacobians of $F$ and $V$. We do not evaluate at the disease-free equilibrium, because we will also use this  evaluated at to calculate $R_t$. The jacobian of $V$, $v = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big]$, will be $v = (\gamma + \mu)$ along the diagonal and zero elsewhere.  
+    The jacobian of $F$ is
+    $$
+    f = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] = \frac{\beta}{N} \begin{bmatrix}
+     \theta_{1,1} S_1 & \theta_{1,2} S_1 & \cdots & \theta_{1,n} S_1 \\
+    \theta_{2,1} S_2 & \theta_{2,2} S_2 & \cdots & \theta_{2,n} S_2 \\
+    \vdots & \vdots & \ddots & \vdots \\
+    \theta_{n,1} S_n & \theta_{n,2} S_n & \cdots & \theta_{n,n} S_n \\
+    \end{bmatrix}
+    $$
+    \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $R_0$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
+\end{enumerate}
+
 
 \section{Two-patch model}
 Next, we consider how the honeymoon period is affected by heterogeneity in the population, between vaccinated and unvaccinated individuals. We will use a two-patch model to illustrate this. Consider two subpopulations, representing the vaccinated and unvaccinated groups. Within each subpopulation, we have age-structured SIR dynamics, and $\pi$ governs the amount of mixing between the two groups. We also consider an imperfect vaccine, where $v_e$ is the vaccine efficacy. (Age structure is not shown in the diagram for simplicity).
