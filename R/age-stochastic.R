@@ -46,7 +46,9 @@ source("R/age-struc-functions.R")
 #' @param params vector of parameter values
 #' @param waifw contact matrix
 #' @param import_times vector of times, if t %in% import_times, introduce an infection
-stoch_step <- function (x, t, delta_t, n_sims, compartments, age_classes, params, waifw, Fmat, import_times) {
+#' @param which_import integer denoting index of age class into which importations should occur; defaults to 1
+stoch_step <- function (x, t, delta_t, n_sims, compartments, age_classes, params, waifw, 
+                        Fmat, import_times, which_import = 1) {
   with(as.list(params), {
     ## some setup
     n_compartments = length(compartments)
@@ -79,8 +81,8 @@ stoch_step <- function (x, t, delta_t, n_sims, compartments, age_classes, params
     imports = rbinom(n = n_reps, size = x_demog[S_indx, ], prob = 1-exp(-delta*delta_t))
     # imports = as.matrix(imports, nrow = n_compartments, ncol = n_sims)
     if(round(t,4) %in% import_times){ # import in age 5 (for now)
-      age_5_indx = which(age_classes == 5) + length(age_classes)*(0:(n_sims-1))
-      imports[age_5_indx] = imports[age_5_indx] + 1
+      import_indx = which_import + length(age_classes)*(0:(n_sims-1))
+      imports[import_indx] = imports[import_indx] + 1
     }
     # implement transitions
     new_x = x_demog
@@ -92,7 +94,7 @@ stoch_step <- function (x, t, delta_t, n_sims, compartments, age_classes, params
 }
 
 # then we need to wrap this in a function that iterates across time
-run_sims = function(IC, params, n_timesteps, delta_t, compartments, age_classes, waifw, import_times){
+run_sims = function(IC, params, n_timesteps, delta_t, compartments, age_classes, waifw, import_times, which_import = 1){
   with(as.list(params),{
     Fmat <- buildFMatrix_withv(age.classes = age_classes, fert = fert, 
                          ncompartments = length(unique(substr(compartments, 1, 1))), 
@@ -108,7 +110,8 @@ run_sims = function(IC, params, n_timesteps, delta_t, compartments, age_classes,
       t = t + delta_t
       ret[,,ts] <- stoch_step(x = ret[,, ts - 1], t = t, delta_t = delta_t,
                               n_sims = n_sims, compartments = compartments,
-                              age_classes = age_classes, params = params, waifw = waifw, Fmat = Fmat, import_times)
+                              age_classes = age_classes, params = params, waifw = waifw, Fmat = Fmat, 
+                              import_times, which_import)
     }
     return(ret)
   })
@@ -133,10 +136,12 @@ buildFMatrix_withv <- function(age.classes=c(1:60, seq(72,120,by=12), seq(180,60
 source("R/1_setup-WAIFW.R") # this will add waifw to environment, which is list of WAIFW matrices to test
 n_waifw = length(waifw)
 
+waifw_labs = c("flat", "peak age 5", "peak age 10", "diagonal", "POLYMOD")
+names(waifw_labs) = 1:5
+
 paras = c(mu = 1/50, N = 500000, beta0 = 365, beta1 = 0, 
           gamma = 365/14, v = 0.2, p = 0, delta = 0)
 
-n_sims = 1000
 dt = 1/52
 start_vax = 0.95
 rebound_vax = 0.6
@@ -152,6 +157,7 @@ IC[which(IC == max(IC))] = IC[which(IC == max(IC))] - 100
 IC[length(IC)] = 101
 IC_mat = matrix(rep(IC, n_sims), ncol = n_sims)
 
+n_sims = 1000
 outbreak_thresh = 50 
 tst_import_times = seq(0.5, 10.5, 0.5)
 sim_import_times = vector("list", length(tst_import_times))
@@ -205,7 +211,123 @@ p2 = bind_rows(sim_import_times) %>%
   theme_bw()
 p1/p2
 
+#### TEST DIFFERENT WAIFWs -----------------------------------------------------
+n_sims = 1000
+outbreak_thresh = c(2, 5, 10, 25, 50, 100)
+tst_import_times = seq(0.5, 10.5, 0.5)
+sim_import_times = vector("list", length(tst_import_times))
+for(i in 1:length(tst_import_times)){
+  print(paste0("import time ", i, "/", length(tst_import_times)))
+  tmp_list = vector("list", length(waifw))
+  for(j in 1:length(waifw)){
+    print(paste0("waifw ", j))
+    tmp = run_sims(IC_mat, paras_rebound, n_timesteps = (2 + tst_import_times[i])/dt, delta_t = dt, 
+                   compartments = names(IC), age_classes, waifw = waifw[[j]], 
+                   import_time = tst_import_times[i], which_import = which(age_classes == 5)) %>%
+      melt() %>%
+      rename(compartment_id = Var1, 
+             sim_id = Var2, 
+             time = Var3) %>%
+      left_join(data.frame(compartment_id = 1:length(names(IC)), 
+                           compartment = names(IC))) %>%
+      mutate(variable = substr(compartment, 1,1), 
+             age = as.double(substr(compartment, 3, length(compartment))), 
+             time = time*dt) 
+    tmp_tot = tmp %>% 
+      summarize(value = sum(value), .by = c("variable", "sim_id", "time")) 
+    tmp_list[[j]] = tmp_tot %>%
+      # now calculate outbreak pct and only save this since doing more runs
+      filter(variable == "I") %>%
+      summarize(max_value = max(value), 
+                sum_value = sum(value), .by = c("sim_id")) %>%
+      mutate(import_time = tst_import_times[i], 
+             waifw_id = j)
+  }
+  sim_import_times[[i]] = bind_rows(tmp_list)
+}
 
-# next: add different release values, different WAIFWs
+bind_rows(sim_import_times) %>%
+  mutate(outbreak_2 = ifelse(max_value > 2, TRUE, FALSE), 
+         outbreak_5 = ifelse(max_value > 5, TRUE, FALSE), 
+         outbreak_10 = ifelse(max_value > 10, TRUE, FALSE), 
+         outbreak_15 = ifelse(max_value > 15, TRUE, FALSE),
+         outbreak_25 = ifelse(max_value > 25, TRUE, FALSE), 
+         outbreak_50 = ifelse(max_value > 50, TRUE, FALSE)
+  ) %>%
+  melt(c("sim_id", "max_value", "sum_value", "import_time", "waifw_id")) %>%
+  summarize(prob = sum(value)/n(), .by = c("import_time", "waifw_id", "variable")) %>%
+  separate(variable, into = c("variable", "outbreak_thresh")) %>%
+  mutate(outbreak_thresh = factor(outbreak_thresh, levels = c(2, 5, 10, 15, 25, 50))) %>%
+  ggplot(aes(x = import_time, y = prob, color = as.factor(waifw_id))) + 
+  # geom_point() + 
+  geom_line() + 
+  ggtitle("1 importation of age 5") +
+  facet_wrap(vars(outbreak_thresh), labeller = label_both) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw()
+
+#### REPEAT BUT INTORUDCE IMPORTATION INTO HIGHEST CONTACT AGE -----------------
+which_max_contact_age = unlist(lapply(lapply(waifw, colSums), which.max))
+which_max_contact_age[1] = which(age_classes == 5) # use age 5 for flat 
+
+n_sims = 1000
+sim_import_times_maxcontact = vector("list", length(tst_import_times))
+for(i in 1:length(tst_import_times)){
+  print(paste0("import time ", i, "/", length(tst_import_times)))
+  tmp_list = vector("list", length(waifw))
+  for(j in 1:length(waifw)){
+    print(paste0("waifw ", j))
+    tmp = run_sims(IC_mat, paras_rebound, n_timesteps = (2 + tst_import_times[i])/dt, delta_t = dt, 
+                   compartments = names(IC), age_classes, waifw = waifw[[j]], 
+                   import_time = tst_import_times[i], which_import = which_max_contact_age[j]) %>%
+      melt() %>%
+      rename(compartment_id = Var1, 
+             sim_id = Var2, 
+             time = Var3) %>%
+      left_join(data.frame(compartment_id = 1:length(names(IC)), 
+                           compartment = names(IC))) %>%
+      mutate(variable = substr(compartment, 1,1), 
+             age = as.double(substr(compartment, 3, length(compartment))), 
+             time = time*dt) 
+    tmp_tot = tmp %>% 
+      summarize(value = sum(value), .by = c("variable", "sim_id", "time")) 
+    tmp_list[[j]] = tmp_tot %>%
+      # now calculate outbreak pct and only save this since doing more runs
+      filter(variable == "I") %>%
+      summarize(max_value = max(value), 
+                sum_value = sum(value), .by = c("sim_id")) %>%
+      mutate(import_time = tst_import_times[i], 
+             waifw_id = j)
+  }
+  sim_import_times_maxcontact[[i]] = bind_rows(tmp_list)
+}
+beep()
+
+bind_rows(sim_import_times_maxcontact) %>%
+  mutate(outbreak_2 = ifelse(max_value > 2, TRUE, FALSE), 
+         outbreak_5 = ifelse(max_value > 5, TRUE, FALSE), 
+         outbreak_10 = ifelse(max_value > 10, TRUE, FALSE), 
+         outbreak_15 = ifelse(max_value > 15, TRUE, FALSE),
+         outbreak_25 = ifelse(max_value > 25, TRUE, FALSE), 
+         outbreak_50 = ifelse(max_value > 50, TRUE, FALSE)
+  ) %>%
+  melt(c("sim_id", "max_value", "sum_value", "import_time", "waifw_id")) %>%
+  summarize(prob = sum(value)/n(), .by = c("import_time", "waifw_id", "variable")) %>%
+  separate(variable, into = c("variable", "outbreak_thresh")) %>%
+  mutate(outbreak_thresh = factor(outbreak_thresh, levels = c(2, 5, 10, 15, 25, 50))) %>%
+  ggplot(aes(x = import_time, y = prob, color = as.factor(waifw_id))) + 
+  # geom_point() + 
+  geom_line() + 
+  ggtitle("1 importation of age 5") +
+  facet_wrap(vars(outbreak_thresh), labeller = label_both) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw()
+
+# note: from Papania et al. some "elimination" targets are 
+# 1. < 1 case /100,000 or 1,000,000
+# 2. no sustained chains of transmission for > 1 year (median duration of outbreak)
+# 3. observed Rt < 1
+
+# next: add different release values
 
 # next: add assortativity between vax and nonvax
