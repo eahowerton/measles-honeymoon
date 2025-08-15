@@ -156,3 +156,75 @@ susc_after_release_long %>%
   facet_wrap(vars(start_vax)) + 
   theme_bw()
 
+
+#### CALCULATE RT AND PROBABILITY OF OUTBREAK ----------------------------------
+# now repeat for each waifw
+rt_after_release = vector("list", length(waifw))
+p_extinct_after_release = vector("list", length(waifw))
+for(i in 1:length(waifw)){
+  print(i)
+  paras_tmp = paras_all_noimport[[i]]
+  rt_after_release[[i]] = susc_after_release_long %>% 
+    filter(variable == "S") %>%
+    summarize(Rt = get_Rt(waifw[[i]], value, paras_tmp["beta0"], paras_tmp["gamma"], paras_tmp["N"]), 
+              .by = c("time", "start_vax", "release_vax"))
+  p_extinct_after_release[[i]] = susc_after_release_long %>% 
+    filter(variable == "S") %>%
+    dplyr::reframe(compute_extinction_prob(waifw[[i]], value, paras_tmp["beta0"], paras_tmp["gamma"], paras_tmp["N"], age_classes), 
+              .by = c("time", "start_vax", "release_vax"))
+}
+
+# let's plot and see what it looks like
+rt_after_release_long = bind_rows(rt_after_release, .id = "waifw_id")
+p_extinct_after_release_long = bind_rows(p_extinct_after_release, .id = "waifw_id")
+
+ggplot(data = rt_after_release_long, 
+       aes(x = time, y = Rt, color = as.factor(waifw_id))) + 
+  geom_hline(yintercept = 1, linetype = "dotted") +
+  geom_line() + 
+  facet_grid(cols = vars(start_vax), rows = vars(release_vax), labeller = label_both) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
+ggplot(data = p_extinct_after_release_long %>% filter(age == 5), 
+       aes(x = time, y = outbreak_prob, color = as.factor(waifw_id))) + 
+  geom_line() + 
+  facet_grid(cols = vars(start_vax), rows = vars(release_vax), labeller = label_both) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
+# choose highest contact group (for something more comparable?)
+highest_contact = unlist(lapply(waifw, function(i){which.max(colSums(i))}))
+highest_contact[1] = which(age_classes == 5) # modify flat to age 5 instead of infant
+highest_contact = age_classes[highest_contact]
+
+ggplot(data = p_extinct_after_release_long %>%
+         mutate(highest_contact_flag = ifelse(age == highest_contact[waifw_id], TRUE, FALSE)) %>%
+         filter(highest_contact_flag == TRUE),
+       aes(x = time, y = outbreak_prob, color = as.factor(waifw_id))) + 
+  geom_line() + 
+  facet_grid(cols = vars(start_vax), rows = vars(release_vax), labeller = label_both) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
+# put them together
+p1 = ggplot(data = rt_after_release_long %>% filter(start_vax == 0.96, release_vax == 0.4), 
+            aes(x = time, y = Rt, color = as.factor(waifw_id))) + 
+  geom_hline(yintercept = 1, linetype = "dotted") +
+  geom_line() + 
+  facet_grid(cols = vars(start_vax), rows = vars(release_vax), labeller = label_both) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+p2 = ggplot(data = p_extinct_after_release_long %>% filter(age == 7, start_vax == 0.96, release_vax == 0.4), 
+       aes(x = time, y = outbreak_prob, color = as.factor(waifw_id))) + 
+  geom_line() + 
+  facet_grid(cols = vars(start_vax), rows = vars(release_vax), labeller = label_both) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+p1/p2
+

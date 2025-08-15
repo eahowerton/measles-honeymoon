@@ -160,12 +160,24 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
 # for R0 pass DFE (stable age distribution) to S
 # N is a vector of age-specific population sizes
 get_Rt <- function(waifw, S, beta0, gamma, N){
-  # if(length(N) != length(S)){print("WARNING: N should be a vector of age-specific population sizes");browser()}
   S = S/N
   NGM <- beta0 / gamma * waifw %*% diag(S)
   eigenvalues <- eigen(NGM)$values
   R0 <- max(Re(eigenvalues))
   return(R0)
+}
+
+compute_extinction_prob <- function(waifw, S, beta0, gamma, N, age_classes,
+                                    tol = 1e-8, max_iter = 1000) {
+  S = S/N
+  NGM <- beta0 / gamma * waifw %*% diag(S)
+  q <- rep(0.5, nrow(NGM))  # start at full extinction
+  for (i in 1:max_iter) {
+    q_new <- exp(NGM %*% (q - 1))
+    if (max(abs(q_new - q)) < tol) break
+    q <- q_new
+  }
+  return(data.frame(age = age_classes, extinction_prob = q, outbreak_prob = 1 - q))
 }
 
 #### FIND SCALARS --------------------------------------------------------------
