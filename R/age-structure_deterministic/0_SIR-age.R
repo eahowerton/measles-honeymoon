@@ -1,9 +1,9 @@
 #### SIR MODEL -----------------------------------------------------------------
 sir_age_structured = function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates, Fmat,
-                               fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
+                               fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE, burnin = 0){
   with(as.list(parms),{
     x = x[1:(length(x)-4)] # remove beta hat variables for calculations
-    if(any(x < 0)){x[which(x<0)] = 0} # check x is non-neg
+    if(any(x < 0)){x[which(x<0)] = 0; if(t< burnin){x[seq(2, length(x),3)] = x[seq(2, length(x),3)] + 10}; print(paste0("adj at t = ", t))} # check x is non-neg
     nage = length(age_classes)
     ncomp = length(compartments)
     aging = 1/diff(c(0,age_classes))
@@ -54,6 +54,7 @@ sir_age_structured = function(t, x, parms, compartments, age_classes, mort, vax_
                   nrow = nage, ncol = ncomp)
     der = c(t(der))
     names(der) = sapply(age_classes, function(i){paste0(compartments, "_", i)})
+    # browser()
     der = c(der, 
              BH = sum(lambda*x_mat[, "S"]),
              BHs = sum(lambda*homogeneous_s), 

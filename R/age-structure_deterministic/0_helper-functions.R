@@ -2,7 +2,7 @@
 #' max_t in weeks
 run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, vax_rates = NA, compartments,
                     waifw = NA, IC_type, IC_manual = NA, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
-                    print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA, dt = 1/12, func = sir_age_structured){
+                    print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA, dt = 1/12, func = sir_age_structured, burnin = 0){
   # setup
   IC = setup_IC(start_pop = start_pop, age_classes = age_classes, 
                 compartments = compartments, mort = mort, fert = fert, 
@@ -28,7 +28,8 @@ run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, v
       parms = params, 
       Fmat = Fmat,
       adjust_beta_flag = adjust_beta_flag, 
-      print_warnings_flag = print_warnings_flag
+      print_warnings_flag = print_warnings_flag, 
+      burnin = burnin
     ))
   if(beep_flag){beep()}
   return(process_results(rslts, plot_flag, plot_title, max_t, dt))
