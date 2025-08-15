@@ -4,7 +4,9 @@ run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, v
                     waifw = NA, IC_type, IC_manual = NA, max_t, params, beep_flag = FALSE, adjust_beta_flag = FALSE, 
                     print_warnings_flag = FALSE, plot_flag = FALSE, plot_title = NA, dt = 1/12, func = sir_age_structured){
   # setup
-  IC = setup_IC(start_pop, age_classes, compartments, mort, fert, IC_type, IC_manual, dt)
+  IC = setup_IC(start_pop = start_pop, age_classes = age_classes, 
+                compartments = compartments, mort = mort, fert = fert, 
+                IC_type = IC_type, IC_manual = IC_manual, dt = dt)
   if(any(is.na(waifw))){
     waifw = matrix(1, length(age_classes), length(age_classes)) 
   }
@@ -41,27 +43,27 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
                      sort(rep(age_classes, length(compartments))))
   if(IC_type == "std"){
     # setup initial conditions
-    IC[which(indx_comp == "S")] = start_pop*0.059/length(age_classes) 			 # susceptibles
+    IC[which(indx_comp == "S")] = start_pop*0.259/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "I")] = 0.001/length(age_classes)
-    IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
+    IC[which(indx_comp == "R")] = start_pop*0.74/length(age_classes)
   }
   if(IC_type == "std-noI"){
     # setup initial conditions
-    IC[which(indx_comp == "S")] = start_pop*0.06/length(age_classes) 			 # susceptibles
-    IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
+    IC[which(indx_comp == "S")] = start_pop*0.26/length(age_classes) 			 # susceptibles
+    IC[which(indx_comp == "R")] = start_pop*0.74/length(age_classes)
   }
   else if(IC_type == "stable-age"){
     expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = dt)
-    IC[which(indx_comp == "S")] = start_pop*0.059*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "S")] = start_pop*0.259*expected_stable$stable.age 			 # susceptibles
     IC[which(indx_comp == "I")] = start_pop*0.001*expected_stable$stable.age 			 # infecteds
-    IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
+    IC[which(indx_comp == "R")] = start_pop*0.74*expected_stable$stable.age 			 # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
   }
   else if(IC_type == "stable-age-noI"){
     expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = dt)
-    IC[which(indx_comp == "S")] = start_pop*0.06*expected_stable$stable.age 			 # susceptibles
-    IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
+    IC[which(indx_comp == "S")] = start_pop*0.26*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "R")] = start_pop*0.74*expected_stable$stable.age 			 # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
   }
