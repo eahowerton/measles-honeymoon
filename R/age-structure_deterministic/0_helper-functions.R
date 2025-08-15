@@ -168,43 +168,6 @@ get_Rt <- function(waifw, S, beta0, gamma, N){
   return(R0)
 }
 
-create_polymod_matrix = function(age_classes, plot_flag = FALSE, 
-                                 age_classes_to_label = c(seq(12, 60, 12), seq(120, 840, 120))){
-  # create polymod using code from Bjornstad book
-  data(polymod)
-  x = y = polymod$contactor[1:30]
-  z = matrix(polymod$contact.rate, ncol = 30, nrow = 30)
-  n = length(x)
-  # symmetrize
-  z2 = (z + t(z))/2
-  z3 = as.vector(z2)
-  xy = data.frame(x = rep(x[1:n], n), y = rep(y[1:n], each = n))
-  polysmooth = Tps(xy, z3, df = 100)
-  # surface(polysmooth, xlab = "", ylab = "", col = gray((12:32)/32))
-  # annualize & symmetrize
-  ps = predict(polysmooth, x = expand.grid(age_classes, age_classes))
-  ps2 = matrix(ps, ncol = length(age_classes))
-  ps2 = ps2 + t(ps2)
-  ps2[ps2<0] = 0 # EH ADDED: IS THIS OKAY?
-  W = ps2/mean(ps2)
-  if(plot_flag){
-    # plot W matrix
-    p <- ggplot(data = melt(W), aes(x = Var1, y = Var2, fill = value)) + 
-      geom_tile() + 
-      scale_fill_viridis_c() + 
-      scale_x_continuous(expand = c(0,0),
-                         breaks = which(age_classes %in% age_classes_to_label),
-                         labels = age_classes_to_label,
-                         name = "age (years)") +
-      scale_y_continuous(expand = c(0,0),
-                         breaks = which(age_classes %in% age_classes_to_label),
-                         labels = age_classes_to_label,
-                         name = "age (years)")
-    print(p)
-  }
-  return(W)
-}
-
 #### FIND SCALARS --------------------------------------------------------------
 match_on_age_or_inc = function(age_classes, mort, fert, start_pop, compartments, 
                                vax_pct = 0, params, waifws, max_t = 100, 
