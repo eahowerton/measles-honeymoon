@@ -228,3 +228,124 @@ p2 = ggplot(data = p_extinct_after_release_long %>% filter(age == 7, start_vax =
   theme(legend.position = "bottom")
 p1/p2
 
+#### FULL HONEYMOON TIME FIGURE ------------------------------------------------
+# i.e., simulate across the full range of release vax values
+release_vax_full = seq(0, 0.88, 0.04)
+nyears_postrelease = 20
+chosen_dt = 1/52
+
+# generate data.frame of simulations to run
+# note: do not need to repeat for all WAIFWs because there are no new infections
+tst_release_full = expand.grid(start_vax = 0.94, 
+                          release_vax = release_vax_full)
+
+susc_after_release_full = vector("list", nrow(tst_release_full))
+for(i in 1:nrow(tst_release_full)){
+  print(paste0("i: ", i, "/", nrow(tst_release_full)))
+  tmp_start_vax = tst_release_full[i, "start_vax"]
+  tmp_release_vax = tst_release_full[i, "release_vax"]
+  IC_manual = vax_equilib_long %>% filter(start_vax == tmp_start_vax, waifw_id == 1, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
+  names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
+  IC_manual = IC_manual$value
+  names(IC_manual) = names_IC
+  # now move all infections into R (local extinction)
+  I_indx = which(substr(names(IC_manual), 1, 1) == "I")
+  R_indx = which(substr(names(IC_manual), 1, 1) == "R")
+  IC_manual[R_indx] = IC_manual[R_indx] + IC_manual[I_indx]
+  IC_manual[I_indx] = 0
+  susc_after_release_full[[i]] = run_ode(
+    age_classes = age_classes, mort = mort, fert = fert, start_pop = paras["N"],
+    compartments = compartments, dt = chosen_dt, waifw = waifw[[1]],
+    vax_change_times = c(0), vax_rates = c(tmp_release_vax), 
+    IC_type = "manual", IC_manual = IC_manual, max_t = nyears_postrelease, 
+    params = paras_all_noimport[[1]],
+    adjust_beta_flag = FALSE, plot_flag = FALSE
+  )
+}
+beep()
+
+susc_after_release_long_full = bind_rows(susc_after_release_full, .id = "sim_id") %>%
+  mutate(sim_id = as.integer(sim_id)) %>%
+  left_join(tst_release_full %>% mutate(sim_id = seq_len(dplyr::n())))
+
+rt_after_release_full = vector("list", length(waifw))
+p_extinct_after_release_full = vector("list", length(waifw))
+for(i in 1:length(waifw)){
+  print(i)
+  paras_tmp = paras_all_noimport[[i]]
+  rt_after_release_full[[i]] = susc_after_release_long_full %>% 
+    filter(variable == "S") %>%
+    summarize(Rt = get_Rt(waifw[[i]], value, paras_tmp["beta0"], paras_tmp["gamma"], paras_tmp["N"]), 
+              .by = c("time", "start_vax", "release_vax"))
+  p_extinct_after_release_full[[i]] = susc_after_release_long_full %>% 
+    filter(variable == "S") %>%
+    dplyr::reframe(compute_extinction_prob(waifw[[i]], value, paras_tmp["beta0"], paras_tmp["gamma"], paras_tmp["N"], age_classes), 
+                   .by = c("time", "start_vax", "release_vax"))
+}
+
+rt_after_release_full_long = bind_rows(rt_after_release_full, .id = "waifw_id")
+p_extinct_after_release_full_long = bind_rows(p_extinct_after_release_full, .id = "waifw_id")
+
+honeymoon_period = rt_after_release_full_long %>%
+  filter(Rt > 1) %>%
+  mutate(min_time = min(time), .by = c("waifw_id", "start_vax", "release_vax")) %>%
+  filter(time == min_time) %>%
+  select(-min_time)
+
+honeymoon_period %>%
+  ggplot(aes(x = release_vax, y = time, color = as.factor(waifw_id))) +
+  geom_line(linewidth = 0.8) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
+p_extinct_after_release_full_long %>%
+  mutate(highest_contact_flag = ifelse(age == highest_contact[waifw_id], TRUE, FALSE)) %>%
+  filter(highest_contact_flag == TRUE, release_vax %in% seq(0, 0.84, 0.12)) %>%
+  ggplot(aes(x = time, y = outbreak_prob, color = as.factor(waifw_id), alpha = release_vax, group = interaction(waifw_id, release_vax))) + 
+  geom_line() + 
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  guides(color = FALSE) +
+  scale_alpha_continuous(range = c(1, 0.3)) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom", 
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor = element_blank(), 
+        strip.background = element_blank())
+
+# show full heatmap of age-specific prob of outbreak 6 months after honeymoon period
+p_extinct_after_release_full_long %>%
+  left_join(honeymoon_period %>% rename(honeymoon_time = time)) %>%
+  filter(release_vax %in% seq(0, 0.84, 0.12), time > honeymoon_time + 0.5) %>%
+  mutate(min_time = min(time), .by = c("waifw_id", "start_vax", "release_vax")) %>%
+  filter(time == min_time) %>%
+  ggplot(aes(x = release_vax, y = as.factor(age), fill = outbreak_prob))+ 
+  geom_tile() + 
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_fill_viridis_c() +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_discrete(expand = c(0,0),
+                     # breaks = which(age_classes %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
+                     # labels = c(2, 4, 6, 8, 10, 30, 50, 70),
+                     name = "age (years)") +
+  theme_bw()
+
+p_extinct_after_release_full_long %>%
+  left_join(honeymoon_period %>% rename(honeymoon_time = time)) %>%
+  filter(release_vax == 0.6, age < 15, time < 12) %>%
+  ggplot(aes(x = time, y = age))+ 
+  geom_tile(aes(fill = outbreak_prob)) + 
+  geom_contour(aes(z = outbreak_prob), color = "white") +
+  # geom_vline(aes(xintercept = honeymoon_time), color = "white") +
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_fill_viridis_c() +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0),
+                   # breaks = which(age_classes %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
+                   # labels = c(2, 4, 6, 8, 10, 30, 50, 70),
+                   name = "age (years)") +
+  theme_bw()
+
+#### TWO PATCH -----------------------------------------------------------------
+
