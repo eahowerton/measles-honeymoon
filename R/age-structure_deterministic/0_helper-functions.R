@@ -36,7 +36,7 @@ run_ode <- function(age_classes, mort, fert, start_pop, vax_change_times = NA, v
 }
 
 # std give 2000 infected individuals across all PA and PB
-setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type = "std", IC_manual = NA, dt){
+setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type = "std", IC_manual = NA, dt, rel_size = NA){
   # indexing - the rows for maternal, susceptible, etc
   indx_comp = rep(compartments, length(age_classes))
   IC <- rep(0,length(age_classes)*length(compartments))
@@ -47,33 +47,33 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
     IC[which(indx_comp == "S")] = start_pop*0.059/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "I")] = 0.001/length(age_classes)
     IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
-    IC[which(indx_comp == "S1")] = start_pop*0.059/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
-    IC[which(indx_comp == "I1")] = 0.001/length(age_classes)
-    IC[which(indx_comp == "R1")] = start_pop*0.94/length(age_classes)
-    IC[which(indx_comp == "S2")] = start_pop*0.059/2/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
-    IC[which(indx_comp == "I2")] = 0.001/2/length(age_classes)
-    IC[which(indx_comp == "R2")] = start_pop*0.94/2/length(age_classes)
+    IC[which(indx_comp == "S1")] = start_pop*rel_size[1]*0.059/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "I1")] = 0.001*rel_size[1]/length(age_classes)
+    IC[which(indx_comp == "R1")] = start_pop*rel_size[1]*0.94/length(age_classes)
+    IC[which(indx_comp == "S2")] = start_pop*rel_size[2]*0.059/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "I2")] = 0.001*rel_size[2]/length(age_classes)
+    IC[which(indx_comp == "R2")] = start_pop*0.94*rel_size[2]/length(age_classes)
   }
   if(IC_type == "std-noI"){
     # setup initial conditions
     IC[which(indx_comp == "S")] = start_pop*0.06/length(age_classes) 			 # susceptibles
     IC[which(indx_comp == "R")] = start_pop*0.94/length(age_classes)
-    IC[which(indx_comp == "S1")] = start_pop*0.06/2/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
-    IC[which(indx_comp == "R1")] = start_pop*0.94/2/length(age_classes)
-    IC[which(indx_comp == "S2")] = start_pop*0.06/2/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
-    IC[which(indx_comp == "R2")] = start_pop*0.94/2/length(age_classes)
+    IC[which(indx_comp == "S1")] = start_pop*rel_size[1]*0.06/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "R1")] = start_pop*rel_size[1]*0.94/length(age_classes)
+    IC[which(indx_comp == "S2")] = start_pop*rel_size[2]*0.06/length(age_classes) 			 # HACK FOR NOW... FIX THIS...
+    IC[which(indx_comp == "R2")] = start_pop*rel_size[2]*0.94/length(age_classes)
   }
   else if(IC_type == "stable-age"){
     expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = dt)
     IC[which(indx_comp == "S")] = start_pop*0.059*expected_stable$stable.age 			 # susceptibles
     IC[which(indx_comp == "I")] = start_pop*0.001*expected_stable$stable.age 			 # infecteds
     IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
-    IC[which(indx_comp == "S1")] = start_pop*0.059/2*expected_stable$stable.age 			 # susceptibles
-    IC[which(indx_comp == "I1")] = start_pop*0.001/2*expected_stable$stable.age 			 # infecteds
-    IC[which(indx_comp == "R1")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
-    IC[which(indx_comp == "S2")] = start_pop*0.059/2*expected_stable$stable.age 			 # susceptibles
-    IC[which(indx_comp == "I2")] = start_pop*0.001/2*expected_stable$stable.age 			 # infecteds
-    IC[which(indx_comp == "R2")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
+    IC[which(indx_comp == "S1")] = start_pop*rel_size[1]*0.059*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "I1")] = start_pop*rel_size[1]*0.001*expected_stable$stable.age 			 # infecteds
+    IC[which(indx_comp == "R1")] = start_pop*rel_size[1]*0.94*expected_stable$stable.age 			   # recovereds
+    IC[which(indx_comp == "S2")] = start_pop*rel_size[2]*0.059*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "I2")] = start_pop*rel_size[2]*0.001*expected_stable$stable.age 			 # infecteds
+    IC[which(indx_comp == "R2")] = start_pop*rel_size[2]*0.94*expected_stable$stable.age 			   # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
   }
@@ -81,10 +81,10 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
     expected_stable <- findStableStruct(age.classes = age_classes, mort = mort, fert = fert, time.step = dt)
     IC[which(indx_comp == "S")] = start_pop*0.06*expected_stable$stable.age 			 # susceptibles
     IC[which(indx_comp == "R")] = start_pop*0.94*expected_stable$stable.age 			 # recovereds
-    IC[which(indx_comp == "S1")] = start_pop*0.06/2*expected_stable$stable.age 			 # susceptibles
-    IC[which(indx_comp == "R1")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
-    IC[which(indx_comp == "S2")] = start_pop*0.06/2*expected_stable$stable.age 			 # susceptibles
-    IC[which(indx_comp == "R2")] = start_pop*0.94/2*expected_stable$stable.age 			   # recovereds
+    IC[which(indx_comp == "S1")] = start_pop*0.06*rel_size[1]*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "R1")] = start_pop*0.94*rel_size[1]*expected_stable$stable.age 			   # recovereds
+    IC[which(indx_comp == "S2")] = start_pop*0.06*rel_size[2]*expected_stable$stable.age 			 # susceptibles
+    IC[which(indx_comp == "R2")] = start_pop*0.94*rel_size[2]*expected_stable$stable.age 			   # recovereds
     if(any(IC < 0)){browser()}
     if(abs(sum(IC) - start_pop) > 1e-6){browser()}
   }
@@ -105,6 +105,7 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
   IC = c(IC, C = 0, BH = 0, BHs = 0, BHi = 0, BHb = 0)
   return(IC)
 }
+
 
 process_results <- function(rslts, plot_flag = FALSE, plot_title = NA, max_t, dt){
   rslts_long <- rslts %>%
