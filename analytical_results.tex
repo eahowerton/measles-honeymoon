@@ -144,7 +144,7 @@ To calculate $R_0$ in the age-structured model, we use the Next Generation Matri
 
 
 \section{Two-patch model}
-Next, we consider how the honeymoon period is affected by heterogeneity in the population, between vaccinated and unvaccinated individuals. We will use a two-patch model to illustrate this. Consider two subpopulations, representing the vaccinated and unvaccinated groups. Within each subpopulation, we have age-structured SIR dynamics, and $\pi$ governs the amount of mixing between the two groups. We also consider an imperfect vaccine, where $v_e$ is the vaccine efficacy. (Age structure is not shown in the diagram for simplicity).
+Next, we consider how the honeymoon period is affected by heterogeneity in the population, between vaccinated and unvaccinated individuals. We will use a two-patch model to illustrate this. Consider two subpopulations, representing the vaccinated and unvaccinated groups. Within each subpopulation, we have age-structured SIR dynamics, and $\phi$ governs the amount of mixing between the two groups. We also consider an imperfect vaccine, where $v_e$ is the vaccine efficacy. (Age structure is not shown in the diagram for simplicity).
 
 \begin{center}
     \begin{tikzpicture}[node distance=1cm]
@@ -184,11 +184,11 @@ Next, we consider how the honeymoon period is affected by heterogeneity in the p
         \draw [arrow] (inv18) -- (S2);
         %% parameters
         \node (parS1-I1) 
-              [right of=S1, xshift = 1cm, yshift=0.25cm] {$(\beta I_1 + \pi \beta I_2)/N_1$};
+              [right of=S1, xshift = 1cm, yshift=0.25cm] {$(\beta I_1 + \phi \beta I_2)/N_1$};
         \node (parI1-R1) 
               [right of=I1, xshift = 1cm, yshift=0.25cm] {$\gamma$};
         \node (parS2-I2) 
-              [right of=S2, xshift = 1cm, yshift=0.25cm] {$(\pi \beta I_1 + \beta I_2)/N_2$};
+              [right of=S2, xshift = 1cm, yshift=0.25cm] {$(\phi \beta I_1 + \beta I_2)/N_2$};
         \node (parI2-R2) 
               [right of=I2, xshift = 1cm, yshift=0.25cm] {$\gamma$};
         \node (par-S1) 
@@ -203,28 +203,48 @@ Next, we consider how the honeymoon period is affected by heterogeneity in the p
 We can write the models equations as follows:
 
 \begin{align}
-    \frac{dS_1}{dt} &= (1-v_e)v\mu(N_1 + N_2) - (\beta I_1 + \pi \beta I_2)S_1/N_1 - \mu S_1  \\
-    \frac{dI_1}{dt} &= (\beta I_1 + \pi \beta I_2)S_1/N_1 - (\gamma + \mu) I_1 \\
-    \frac{dR_1}{dt} &= v_e v \mu(N_1 + N_2) + \gamma I_1 - \mu R_1 \\
-    \frac{dS_2}{dt} &= (1-v)\mu(N_1 + N_2) - (\pi \beta I_1 + \beta I_2)S_2/N_2 - \mu S_2 \\
-    \frac{dI_2}{dt} &= (\pi \beta I_1 + \beta I_2)S_2/N_2 - (\gamma + \mu) I_2 \\
-    \frac{dR_2}{dt} &= v\mu (N_1 + N_2) + \gamma I_2 - \mu R_2
+    \frac{dS_1}{dt} &= (1-v_1)\mu N_1 - (\beta I_1 + \phi \beta I_2)S_1/N_1 - \mu S_1  \\
+    \frac{dI_1}{dt} &= (\beta I_1 + \phi \beta I_2)S_1/N_1 - (\gamma + \mu) I_1 \\
+    \frac{dR_1}{dt} &= v_1 \mu N_1 + \gamma I_1 - \mu R_1 \\
+    \frac{dS_2}{dt} &= (1-v_2)\mu N_2 - (\phi \beta I_1 + \beta I_2)S_2/N_2 - \mu S_2 \\
+    \frac{dI_2}{dt} &= (\phi \beta I_1 + \beta I_2)S_2/N_2 - (\gamma + \mu) I_2 \\
+    \frac{dR_2}{dt} &= v_2 \mu N_2 + \gamma I_2 - \mu R_2
 \end{align}
 
-\noindent
-We can represent the jacobian, $J$ as follows:
-
-\[
-J = 
-\begin{pmatrix}
--\frac{\beta I_1 + \pi \beta I_2}{N_1} - \mu & -\frac{\beta S_1}{N_1} & 0 & 0 & -\frac{\pi \beta S_1}{N_1} & 0 \\
-\frac{\beta I_1 + \pi \beta I_2}{N_1} & \frac{\beta S_1}{N_1} - (\gamma + \mu) & 0 & 0 & \frac{\pi \beta S_1}{N_1} & 0 \\
-0 & \gamma & -\mu & 0 & 0 & 0 \\
-0 & -\frac{\pi \beta S_2}{N_2} & 0 & -\frac{\pi \beta I_1 + \beta I_2}{N_2} - \mu & -\frac{\beta S_2}{N_2} & 0 \\
-0 & \frac{\pi \beta S_2}{N_2} & 0 & \frac{\pi \beta I_1 + \beta I_2}{N_2} & \frac{\beta S_2}{N_2} - (\gamma + \mu)& 0 & \\
-0 & 0 & 0 & 0 & \gamma & -\mu \\
-\end{pmatrix}
-\]
-
+\subsection{$R_0$ of the two patch model: using Next Generation Matrix method}
+To calculate $R_0$ in the age-structured, two patch model, we again use the Next Generation Matrix (NGM) method outlined in Diekmann et al 1990. To do so, we follow the steps from the Bjornstad book:
+\begin{enumerate}
+    \item Define the infected states, $X = (I_{1,1}, I_{1,2}, \ldots, I_{1,n}, I_{2,1}, I_{2,2}, \ldots, I_{2,n})$ for ages $i = 1, 2, \ldots n$
+    \item Define the new infection terms, for ages $i = 1, 2, \ldots, n$
+    \[
+   \mathcal{F}(X) = \begin{bmatrix}
+   (I_{1,1} + \phi I_{2,1}) \frac{S_{1,1}}{N_1}\\
+   (I_{1,2} + \phi I_{2,2}) \frac{S_{1,2}}{N_1}\\
+   \vdots \\
+    (I_{1,n} + \phi I_{2,n}) \frac{S_{1,n}}{N_1} \\
+    (\phi I_{1,1} + I_{2,1}) \frac{S_{2,1}}{N_2}\\
+    (\phi I_{1,2} + I_{2,2}) \frac{S_{2,2}}{N_2}\\
+    \vdots \\
+    (\phi I_{1,n} + I_{2,n}) \frac{S_{2,n}}{N_2}\\
+    \end{bmatrix}
+    \]
+    \item Define all losses out of infected states, $\mathcal{V}^-(X) = \Big[ (\gamma + \mu) I_{1,i}, (\gamma + \mu) I_{2,i} \Big]^T$ repeated for all ages.
+    \item Define all gained transfers between infected states, $\mathcal{V}^+(X) = \Big[ 0 \Big]$ repeated for all ages.
+    \item Define the total losses out of infected states, $\mathcal{V}(X) = \mathcal{V}^-(X) - \mathcal{V}^+(X) = \Big[ (\gamma + \mu) I \Big]$.
+    \item Compute the jacobians of $F$ and $V$. We do not evaluate at the disease-free equilibrium, because we will also use this  evaluated at to calculate $R_t$. The jacobian of $V$, $v = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big]$, will be $v = (\gamma + \mu)$ along the diagonal and zero elsewhere.  
+    The jacobian of $F$ is
+    \[
+    f = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] = \beta 
+    \begin{bmatrix}
+     \theta_{1,1} \frac{S_{1,1}}{N_1} & \cdots & \theta_{1,n} \frac{S_{1,1}}{N_1} & \phi \theta_{1,1} \frac{S_{1,1}}{N_1} & \cdots & \phi \theta_{1,n} \frac{S_{1,1}}{N_1} \\
+    \vdots & \ddots & \vdots & \vdots & \ddots & \vdots \\
+    \theta_{n,1} \frac{S_{1,n}}{N_1} & \cdots & \theta_{n,n} \frac{S_{1,n}}{N_1} & \phi \theta_{n,1} \frac{S_{1,n}}{N_1} & \cdots & \phi \theta_{n,n} \frac{S_{1,n}}{N_1} \\
+     \phi \theta_{1,1} \frac{S_{2,1}}{N_2} & \cdots & \phi \theta_{1,n} \frac{S_{2,1}}{N_2} & \theta_{1,1} \frac{S_{2,1}}{N_2} & \cdots & \theta_{1,n} \frac{S_{2,1}}{N_2} \\
+    \vdots & \ddots & \vdots & \vdots & \ddots & \vdots \\
+    \phi \theta_{n,1} \frac{S_2,n}{N_2} & \cdots & \phi \theta_{n,n} \frac{S_2,n}{N_2} & \theta_{n,1} \frac{S_2,n}{N_2} & \cdots & \theta_{n,n} \frac{S_2,n}{N_2} \\
+    \end{bmatrix}
+    \]
+    \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $R_0$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
+\end{enumerate}
 
 \end{document}
