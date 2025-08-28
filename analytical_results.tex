@@ -247,4 +247,60 @@ To calculate $R_0$ in the age-structured, two patch model, we again use the Next
     \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $R_0$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
 \end{enumerate}
 
+\noindent
+To find the dominant eigenvalue of this matrix, we consider the fact that this is a block matrix 
+
+\[
+    NGM = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] = \frac{\beta}{\gamma + \mu} 
+    \begin{bmatrix}
+     A & \phi A \\
+        \phi B & B \\
+    \end{bmatrix}
+    \]
+
+\noindent
+where $A = \theta \frac{S_1}{N_1}$ and $B = \theta \frac{S_2}{N_2}$. We will consider an eigenvector of the form $v = \begin{bmatrix}
+    x \\
+    \alpha x
+\end{bmatrix}$, which implies that 
+
+\begin{align}
+Ax + \phi \alpha Ax = \lambda x \\
+ \phi Bx + \alpha Bx = \lambda x
+\end{align}
+
+\noindent
+or 
+
+\begin{align}
+(1+ \phi \alpha) Ax = \lambda x \\
+(\phi + \alpha) Bx = \lambda x
+\end{align}
+
+Assume that $x$ is an eigenvector for $A$ with eignevalue $\lambda_A$ and for $B$, with eigenvalue $\lambda_B$. Then, we have $Ax = \lambda_A x$ and $Bx = \lambda_B x$. Substituting these into the equations above, we have
+
+\begin{align}
+(1+ \phi \alpha) \lambda_A x = \lambda x \\
+(\phi + \alpha) \lambda_B x = \lambda x
+\end{align}
+
+or 
+
+\begin{align}
+(1 + \phi \alpha) \lambda_A x &= (\phi + \alpha) \lambda_B x
+\end{align}
+
+Then, if $x \neq [0]$, we have
+
+\begin{align}
+    \lambda_A + \phi \alpha \lambda_A &= \phi \lambda_B + \alpha \lambda_B \\
+    (\phi \lambda_A + \lambda_B) \alpha &=  \phi \lambda_B - \lambda_A   \\
+    \alpha &= \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A + \lambda_B) }
+\end{align}
+
+\noindent
+But we know that $\lambda_A$ and $\lambda_B$ are the $R_0$ values for patch 1 and patch 2, respectively. Thus, $\alpha = \frac{\phi R_{0,B} - R_{0,A}}{\phi R_{0,A} + R_{0,B}}$.
+
+We should be able to write patch specific R0 in terms of $v_1$ and $v_2$....
+
 \end{document}
