@@ -33,43 +33,128 @@ paras_noimport["delta"] = 0
 # R0
 with(as.list(paras), beta0/(gamma + mu))
 
-prop_N1 = 0.7
+prop_N1 = 0.9
 N1 = prop_N1*paras["N"]
 N2 = (1-prop_N1)*paras["N"]
 # fix population 1 vaccination rates, and vary population 2 vax rates for different overall coverage
-start_vax = c(0.9, 0.92, 0.94, 0.96)
+start_vax = 0.96#c(0.9, 0.92, 0.94, 0.96)
 start_vax1 = rep(0.96, length(start_vax))
 start_vax2 = (start_vax*paras["N"] - N1*start_vax1)/N2 
-print(start_vax2)
+release_vax1 = seq(0.7, 0.9, 0.02)
+release_vax2 = seq(0, 0.8, 0.02)
+
+tst_phi = seq(0, 1, 0.5)
+
+stable_age = findStableStruct(age_classes, mort, fert, 1/52)$stable.age
+
+#### SHOW HOW R0 DEPENDS ON V1, V2, AND N1/(N1 + N2) ---------------------------
+tst_all_paras = expand.grid(prop_N1 = seq(0.1,0.9,0.1), 
+                            v1 = seq(0, 1, 0.1),
+                            v2 = seq(0, 1, 0.1),
+                            waifw_id = 1:5, 
+                            phi = seq(0, 1, 0.1))
+
+tst_all_paras = tst_all_paras %>%
+  mutate(row_id = seq_len(n())) %>%
+  mutate(R0 = get_Rt_twopatch(waifw = waifw[[waifw_id]], 
+                              S1 = stable_age*prop_N1*(1-v1), 
+                              S2 = stable_age*(1-prop_N1)*(1-v2), 
+                              N1 = prop_N1, 
+                              N2 = (1-prop_N1), 
+                              beta0 = paras["beta0"], gamma = paras["gamma"], mu = paras["mu"], phi = phi), 
+         .by = c("row_id"))
+
+ggplot(data = tst_all_paras %>% mutate(max_R0 = max(R0), .by = c("waifw_id")) %>% filter(waifw_id == 3), 
+       aes(x = v1, y = v2)) + 
+  geom_tile(aes(fill = R0)) + 
+  geom_contour(aes(z = R0)) +
+  facet_grid(rows = vars(prop_N1), cols = vars(phi)) + 
+  scale_fill_viridis_c()
+
+ggplot(data = tst_all_paras %>% 
+         filter(waifw_id == 3, phi %in% seq(0, 1, 0.5), round(prop_N1,4) %in% c(0.2, 0.5, 0.8)), 
+       aes(x = v1, y = v2)) + 
+  geom_tile(aes(fill = R0)) + 
+  geom_contour(aes(z = R0), breaks = 10, color = "black") +
+  facet_grid(rows = vars(prop_N1), cols = vars(phi), labeller = label_both) + 
+  scale_fill_viridis_c()
+
+
+# get contours
+contour_df = tst_all_paras %>%
+  filter(phi %in% seq(0, 1, 0.5), round(prop_N1,4) %in% c(0.2, 0.5, 0.8)) %>%
+  arrange(v1, v2) 
+
+contours = vector("list")
+cntr = 1
+for(i in unique(contour_df$waifw_id)){
+  for(j in unique(contour_df$phi)){
+    for(k in unique(contour_df$prop_N1)){
+      print(cntr)
+      tmp = contour_df %>% filter(waifw_id == i, phi == j, prop_N1 == k)
+      tmp_x = tmp$v1 %>% unique()
+      tmp_y = tmp$v2 %>% unique()
+      tmp_z = contour_df %>% 
+        filter(waifw_id == i, phi == j, prop_N1 == k) %>%
+        dcast(v1 ~ v2, value.var = "R0") %>%
+        select(-v1) %>%
+        as.matrix()
+      if(max(tmp_z)< 10){
+        contours[[cntr]] = data.frame(
+          waifw_id = i, phi = j, prop_N1 = k, 
+          v1 = tmp2[[1]]$x, 
+          v2 = tmp2[[1]]$y,
+          R0 = NA
+        )
+        break
+      }
+      tmp2 = contourLines(tmp_x, tmp_y, tmp_z, levels = c(10))
+      contours[[cntr]] = data.frame(
+        waifw_id = i, phi = j, prop_N1 = k, 
+        v1 = tmp2[[1]]$x, 
+        v2 = tmp2[[1]]$y,
+        R0 = tmp2[[1]]$level
+      )
+      cntr = cntr + 1
+    }
+  }
+}
+
+contours = bind_rows(contours)
+
+ggplot(data = contours, 
+       aes(x = v1, y = v2, color = phi, linetype = as.factor(prop_N1), group = interaction(prop_N1, phi))) + 
+  geom_path() +
+  facet_wrap(vars(waifw_id))
+
 
 
 #### GET R0 VALUES FOR EACH WAIFW ----------------------------------------------
-stable_age = findStableStruct(age_classes, mort, fert, 1/52)$stable.age
 
-find_scalar = function(s, R0, waifw, S, beta0, gamma, N){
-  # print(paste0("s: ", s, " R0: ", get_Rt(waifw, S, beta0*s, gamma, N)))
-  diff = get_Rt(waifw, S, beta0*s, gamma, N) - R0
+find_scalar = function(s, R0, waifw, S1, S2, N1, N2, beta0, gamma, mu, phi){
+  diff = get_Rt_twopatch(waifw, S1, S2, N1, N2, beta0*s, gamma, mu, phi) - R0
   return(abs(diff))
 }
 
-get_Rt_twopatch(waifw[[1]], stable_age*prop_N1,  
-                stable_age*(1 - prop_N1), prop_N1, 1- prop_N1, 
-                paras_all[[1]]["beta0"], paras_all[[1]]["gamma"], paras_all[[1]]["mu"], phi = 0)
-
-scalars = data.frame(waifw_id = 1:5, scalar = NA, diff = NA)
-for(i in 1:length(waifw)){
-  o = optimize(f = find_scalar, tol = 1e-8, interval = c(0, 100), R0 = R0,
-               waifw = waifw[[i]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"], N = 1)
-  print(get_Rt(waifw[[i]], stable_age, paras["beta0"]*o$minimum, paras["gamma"], 1))
-  scalars[i, 2:3] = c(o$minimum, o$objective)
+scalars = expand.grid(waifw_id = 1:5, phi = tst_phi, scalar = NA, diff = NA)
+for(i in 1:nrow(scalars)){
+  tmp_waifw_id = unlist(scalars[i, "waifw_id"])
+  tmp_phi = unlist(scalars[i, "phi"])
+  o = optimize(f = find_scalar, tol = 1e-8, interval = c(0, 100), R0 = R0, waifw = waifw[[tmp_waifw_id]], 
+               S1 = stable_age*prop_N1, S2 = stable_age*(1-prop_N1),
+               N1 = prop_N1, N2 = (1-prop_N1),
+               beta0 = paras["beta0"], gamma = paras["gamma"], mu = paras["mu"], phi = tmp_phi)
+  scalars[i, "scalar"] = o$minimum
+  scalars[i, "diff"] = o$objective
 }
 
+
 # create a list of parameters for 
-paras_all = lapply(1:5, function(i){paras_tmp = paras; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,2]; return(paras_tmp)})
-paras_all_noimport = lapply(1:5, function(i){paras_tmp = paras_noimport; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,2]; return(paras_tmp)})
+paras_all = lapply(1:nrow(scalars), function(i){paras_tmp = paras; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,3]; return(paras_tmp)})
+paras_all_noimport = lapply(1:nrow(scalars), function(i){paras_tmp = paras_noimport; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,3]; return(paras_tmp)})
 
 
-#### TWO PATCH -----------------------------------------------------------------
+#### FIND PRE-RELEASE EQUILIBRIUM ----------------------------------------------
 
 # equilibrium pre-release population size
 vax_equilib_twopatch = vector("list", length(waifw))
@@ -111,43 +196,16 @@ vax_equilib_twopatch_long = bind_rows(vax_equilib_twopatch) %>%
   left_join(data.frame(age = round(age_classes, 4), 
                        bin_width = bin_width))
 
-vax_equilib_twopatch_long %>%
-  filter(variable_short %in% c("S", "I", "R")) %>%
-  summarize(value = sum(value), .by = c("waifw_id", "patch", "start_vax", "variable")) %>%
-  ggplot(aes(x = start_vax, y = value, color = as.factor(waifw_id))) + 
-  geom_point() + 
-  geom_line() +
-  facet_wrap(vars(variable), scales = "free") + 
-  theme_bw()
-
-vax_equilib_twopatch_long %>%
-  filter(variable_short == "I") %>%
-  summarize(value = sum(value), .by = c("waifw_id", "patch", "start_vax", "variable")) %>%
-  ggplot(aes(x = start_vax, y = value, color = as.factor(waifw_id))) + 
-  geom_point() + 
-  geom_line() +
-  facet_wrap(vars(variable), scales = "free") + 
-  theme_bw()
-
-
-vax_equilib_twopatch_long %>%
-  filter(variable_short %in% c("S", "I", "R")) %>%
-  summarize(value = sum(value), .by = c("waifw_id", "patch", "start_vax")) %>%
-  ggplot(aes(x = start_vax, y = value, color = as.factor(waifw_id))) + 
-  geom_point() + 
-  geom_line() +
-  facet_wrap(vars(patch), scales = "free") + 
-  theme_bw()
 
 # note: do not need to repeat for all WAIFWs or values of phi
 # because there are no new infections
 
+#### RELEASE UNDER DIFFERENT COVERAGE VALUES FOR EACH PATCH
 tst_release_twopatch = expand_grid(start_vax = start_vax, 
-                                   release_vax = release_vax, 
-                                   release_vax1 = seq(0,0.9,0.15)) %>%
-  mutate(release_vax2 = (release_vax*paras["N"] - N1*release_vax1)/N2) %>%
-  filter(release_vax2 < release_vax1, release_vax2 > 0) %>%
-  filter(release_vax == 0.4) # for now
+                                   release_vax1 = release_vax1, 
+                                   release_vax2 = release_vax2) %>%
+  mutate(release_vax = (release_vax1*N1 + release_vax2*N2)/paras["N"])
+chosen_dt = 1/26
 
 susc_after_release_twopatch = vector("list", nrow(tst_release_twopatch))
 for(i in 1:nrow(tst_release_twopatch)){
@@ -168,8 +226,8 @@ for(i in 1:nrow(tst_release_twopatch)){
     age_classes = age_classes, mort = mort, fert = fert, start_pop = paras["N"],
     compartments = compartments_twopatch, dt = chosen_dt, waifw = waifw[[1]],
     vax_change_times = c(0), vax_rates1 = c(tmp_release_vax1), vax_rates2 = c(tmp_release_vax2),  
-    IC_type = "manual", IC_manual = IC_manual, max_t = nyears_postrelease, 
-    params = paras_all_noimport[[i]],
+    IC_type = "manual", IC_manual = IC_manual, max_t = 15, 
+    params = paras_all_noimport[[1]], # can use any because differences don't matter without infections (here only tracking S)
     adjust_beta_flag = FALSE, plot_flag = FALSE
   )
 }
@@ -190,46 +248,40 @@ susc_after_release_twopatch_wide = susc_after_release_twopatch_long %>%
               dcast(sim_id + time + start_vax + release_vax1 + release_vax2 ~ variable, value.var = "value")) %>%
   dcast(sim_id + time + age + start_vax + release_vax1 + release_vax2 + N1 + N2 ~ variable, value.var = "value")
 
-
 # now repeat for each waifw
-tst_phi = seq(0, 1, 0.5)
-
-rt_after_release_twopatch = vector("list", length(tst_phi))
-p_extinct_after_release_twopatch = vector("list", length(tst_phi))
-for(j in 1:length(tst_phi)){
-  rt_tmp = vector("list", length(waifw))
-  p_extinct_tmp = vector("list", length(waifw))
-  for(i in 1:length(waifw)){
-    print(i)
-    paras_tmp = paras_all_noimport[[i]]
-    rt_tmp[[i]] = susc_after_release_twopatch_wide %>% 
-      filter(time < 4) %>%
-      summarize(Rt = get_Rt_twopatch(waifw = waifw[[i]], S1 = S1, S2 = S2, N1 = N1, N2 = N2, 
-                                     beta0 = paras_tmp["beta0"], gamma = paras_tmp["gamma"], mu = paras_tmp["mu"], phi = tst_phi[j]), 
-                .by = c("time", "start_vax", "release_vax1", "release_vax2"))
-    p_extinct_tmp[[i]] = susc_after_release_twopatch_wide %>% 
-      filter(time < 4) %>%
-      dplyr::reframe(compute_extinction_prob_twopatch(
-        waifw = waifw[[i]], S1 = S1, S2 = S2, N1 = N1, N2 = N2, 
-        beta0 = paras_tmp["beta0"], gamma = paras_tmp["gamma"], mu = paras_tmp["mu"], phi = tst_phi[j], age_classes),
-        .by = c("time", "start_vax", "release_vax1", "release_vax2"))
-  }
-  rt_after_release_twopatch[[j]] = bind_rows(rt_tmp, .id = "waifw_id")
-  p_extinct_after_release_twopatch[[j]] = bind_rows(p_extinct_tmp, .id = "waifw_id")
+rt_after_release_twopatch = vector("list", nrow(scalars))
+p_extinct_after_release_twopatch = vector("list", nrow(scalars))
+for(i in 1:nrow(scalars)){
+  print(paste0(i, "/", nrow(scalars)))
+  paras_tmp = paras_all_noimport[[i]]
+  tmp_waifw_id = scalars[i, "waifw_id"]
+  tmp_phi = scalars[i, "phi"]
+  rt_after_release_twopatch[[i]] = susc_after_release_twopatch_wide %>% 
+    filter(time < 10) %>%
+    summarize(Rt = get_Rt_twopatch(waifw = waifw[[tmp_waifw_id]], S1 = S1, S2 = S2, N1 = N1, N2 = N2, 
+                                   beta0 = paras_tmp["beta0"], gamma = paras_tmp["gamma"], mu = paras_tmp["mu"], phi = tmp_phi), 
+              .by = c("time", "start_vax", "release_vax1", "release_vax2"))
+  # p_extinct_after_release_twopatch[[i]] = susc_after_release_twopatch_wide %>% 
+  #   filter(time < 10) %>%
+  #   dplyr::reframe(compute_extinction_prob_twopatch(
+  #     waifw = waifw[[tmp_waifw_id]], S1 = S1, S2 = S2, N1 = N1, N2 = N2, 
+  #     beta0 = paras_tmp["beta0"], gamma = paras_tmp["gamma"], mu = paras_tmp["mu"], phi = tmp_phi, age_classes),
+  #     .by = c("time", "start_vax", "release_vax1", "release_vax2")) 
 }
 
-
-rt_after_release_twopatch_long = bind_rows(rt_after_release_twopatch, .id = "tst_phi_id") %>%
-  mutate(phi = tst_phi[as.integer(tst_phi_id)])
-p_extinct_after_release_twopatch_long = bind_rows(p_extinct_after_release_twopatch, .id = "tst_phi_id") %>%
-  mutate(phi = tst_phi[as.integer(tst_phi_id)])
+rt_after_release_twopatch_long = bind_rows(rt_after_release_twopatch, .id = "row_id") %>%
+  mutate(row_id = as.integer(row_id)) %>%
+  left_join(scalars %>% select(waifw_id, phi) %>% mutate(row_id = seq_len(n())))
+p_extinct_after_release_twopatch_long = bind_rows(p_extinct_after_release_twopatch, .id = "row_id") %>%
+  mutate(row_id = as.integer(row_id)) %>%
+  left_join(scalars %>% select(waifw_id, phi) %>% mutate(row_id = seq_len(n())))
 
 # some plots to explore the effects of phi
-ggplot(data = rt_after_release_twopatch_long, 
-       aes(x = time, y = Rt, color = as.factor(phi))) + 
+ggplot(data = rt_after_release_twopatch_long %>% filter(round(release_vax1,3) == 0.9, release_vax2 == 0),
+       aes(x = time, y = Rt, color = as.factor(phi))) +
   geom_hline(yintercept = 1) +
-  geom_line() + 
-  facet_grid(cols = vars(start_vax), rows = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  geom_line() +
+  facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs), scales = "free") +
   theme_bw()
 
 # honeymmon
@@ -240,10 +292,96 @@ honeymoon_period = rt_after_release_twopatch_long %>%
   select(-min_time)
 
 honeymoon_period %>% filter(start_vax == 0.96) %>%
-  ggplot(aes(x = phi, y = time, color = as.factor(waifw_id))) +
-  geom_point() +
-  geom_line(linewidth = 0.8) +
+  mutate(release_coverage = (release_vax1*N1 + release_vax2*N2)/paras["N"]) %>%
+  ggplot(aes(x = release_vax1, y = release_vax2)) + 
+  geom_tile(aes(fill = time)) + 
+  geom_contour(aes(z = release_coverage), color = "gray") + 
+  geom_contour(aes(z = time), color = "red") +
+  # metR::geom_text_contour(aes(label = time), color = "white") +
+  facet_grid(cols = vars(waifw_id), rows = vars(phi)) + 
+  scale_fill_viridis_c()
+
+honeymoon_period %>% filter(start_vax == 0.96) %>%
+  ggplot(aes(x = release_vax1, y = release_vax2)) + 
+  geom_contour(aes(z = time, color = as.factor(waifw_id)), breaks = c(2, 5, 7)) + 
+  facet_grid(cols = vars(phi)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   theme_bw() + 
   theme(legend.position = "bottom")
+
+honeymoon_period %>% filter(start_vax == 0.96) %>%
+  ggplot(aes(x = phi, y = time, color = as.factor(waifw_id))) +
+  geom_point() +
+  geom_line(linewidth = 0.8) +
+  facet_grid(cols = vars(release_vax1), rows = vars(release_vax2)) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
+
+honeymoon_period %>% filter(start_vax == 0.96, round(release_vax1,3) %in% c(0.7, 0.8, 0.9)) %>%
+  ggplot(aes(x = release_vax2, y = time, color = as.factor(waifw_id), alpha = as.factor(phi))) +
+  geom_line(linewidth = 0.8) +
+  facet_grid(cols = vars(release_vax1)) +
+  scale_alpha_manual(values = c(1, 0.7, 0.4)) +
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  theme_bw() + 
+  theme(legend.position = "bottom")
+
+p_extinct_after_release_twopatch_long %>%
+  filter(age < 15, time < 12, start_vax == 0.96) %>%
+  ggplot(aes(x = time, y = age))+ 
+  geom_tile(aes(fill = outbreak_prob)) + 
+  geom_contour(aes(z = outbreak_prob), color = "white") +
+  facet_grid(rows = vars(waifw_id, patch), cols = vars(phi), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_fill_viridis_c() +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_y_continuous(expand = c(0,0),
+                     # breaks = which(age_classes %in% c(2, 4, 6, 8, 10, 30, 50, 70)),
+                     # labels = c(2, 4, 6, 8, 10, 30, 50, 70),
+                     name = "age (years)") +
+  theme_bw()
+
+#### try simulating some releases ----------------------------------------------
+some_twopatch_releases = vector("list", nrow(tst_release_twopatch))
+for(j in 1:length(waifw)){
+  print(paste0(j, "/", length(waifw)))
+  tmp = vector("list", length(tst_phi))
+  for(i in 1:length(tst_phi)){
+    tmp_paras = paras_all_noimport[[j]]
+    tmp_paras["phi"] = tst_phi[i]
+    tmp_start_vax = unlist(tst_release_twopatch[1, "start_vax"])
+    tmp_release_vax1 = unlist(tst_release_twopatch[1, "release_vax1"])
+    tmp_release_vax2 = unlist(tst_release_twopatch[1, "release_vax2"])
+    IC_manual = vax_equilib_twopatch_long %>% filter(start_vax == tmp_start_vax, waifw_id == j, !(variable %in% c("C", "BH", "BHs", "BHi", "BHb")))
+    names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
+    IC_manual = IC_manual$value
+    names(IC_manual) = names_IC
+    # now move all infections into R (local extinction)
+    I_indx = which(substr(names(IC_manual), 1, 1) == "I")
+    R_indx = which(substr(names(IC_manual), 1, 1) == "R")
+    IC_manual[R_indx] = IC_manual[R_indx] + IC_manual[I_indx]
+    IC_manual[I_indx] = 0
+    IC_manual["I1_5"] = IC_manual["I1_5"] + 1
+    IC_manual["R1_5"] = IC_manual["R1_5"] - 1
+    tmp[[i]] = run_ode_twopatch(
+      age_classes = age_classes, mort = mort, fert = fert, start_pop = paras["N"],
+      compartments = compartments_twopatch, dt = chosen_dt, waifw = waifw[[j]],
+      vax_change_times = c(0), vax_rates1 = c(tmp_release_vax1), vax_rates2 = c(tmp_release_vax2),  
+      IC_type = "manual", IC_manual = IC_manual, max_t = 15, 
+      params = tmp_paras,
+      adjust_beta_flag = FALSE, plot_flag = FALSE
+    ) %>%
+      mutate(phi = tst_phi[i])
+  }
+  some_twopatch_releases[[j]] = bind_rows(tmp)
+}
+beep()
+
+some_twopatch_releases_long = bind_rows(some_twopatch_releases, .id = "waifw_id")
+
+ggplot(data = some_twopatch_releases_long %>% filter(substr(variable,1,1) == "I") %>% summarize(value = sum(value), .by = c("time", "phi", "waifw_id")), 
+       aes(x = time, y = value, color = as.factor(phi))) + 
+  geom_line() + 
+  facet_wrap(vars(waifw_id))
 

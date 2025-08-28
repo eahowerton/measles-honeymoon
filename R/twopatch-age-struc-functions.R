@@ -90,7 +90,10 @@ compute_extinction_prob_twopatch <- function(waifw, S1, S2, N1, N2, beta0, gamma
     if (max(abs(q_new - q)) < tol) break
     q <- q_new
   }
-  return(data.frame(age = age_classes, extinction_prob = q, outbreak_prob = 1 - q))
+  return(data.frame(age = rep(age_classes,2), 
+                    patch = sort(rep(1:2, length(age_classes))),
+                    extinction_prob = q, 
+                    outbreak_prob = 1 - q))
 }
 
 buildFMatrix_twopatch <- function(age.classes=c(1:60, seq(72,120,by=12), seq(180,600,by=60)),  
