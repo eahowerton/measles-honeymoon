@@ -55,7 +55,7 @@ tst_all_paras = expand.grid(prop_N1 = seq(0.1,0.9,0.1),
                             phi = seq(0, 1, 0.1))
 
 tst_all_paras = tst_all_paras %>%
-  mutate(row_id = seq_len(n())) %>%
+  mutate(row_id = seq_len(dplyr::n())) %>%
   mutate(R0 = get_Rt_twopatch(waifw = waifw[[waifw_id]], 
                               S1 = stable_age*prop_N1*(1-v1), 
                               S2 = stable_age*(1-prop_N1)*(1-v2), 
@@ -127,7 +127,42 @@ ggplot(data = contours,
   geom_path() +
   facet_wrap(vars(waifw_id))
 
+# now try analytical result
+tst_again = tst_all_paras %>% 
+  filter(prop_N1 == 0.5) %>%
+  mutate(P1_waifw0 = get_Rt(waifw[[waifw_id]], 
+                            S = stable_age*(1-v1)*(prop_N1), 
+                            beta0 = 1, gamma = 1, mu = 0, N = (prop_N1)), 
+         P2_waifw0 = get_Rt(waifw[[waifw_id]], 
+                            S = stable_age*(1-v2), 
+                            beta0 = 1, gamma = 1, mu = 0, N = 1),
+        P1_R0 = get_Rt(waifw[[waifw_id]], 
+                        S = stable_age*(1-v1), 
+                        beta0 = paras["beta0"], gamma = paras["gamma"], mu = paras["mu"], N = 1), 
+         P2_R0 = get_Rt(waifw[[waifw_id]], 
+                        S = stable_age*(1-v2), 
+                        beta0 = paras["beta0"], gamma = paras["gamma"], mu = paras["mu"], N = 1), 
+         .by = "row_id") %>%
+  left_join(data.frame(waifw_id = 1:5) %>%
+              mutate(waifw0 = get_Rt(waifw[[waifw_id]], S = stable_age, beta0 = 1, gamma = 1, mu = 0, N = 1), .by = c("waifw_id")))
 
+tst_again = tst_again %>%
+  mutate(R0_analyt =  paras["beta0"]/( paras["gamma"] +  paras["mu"]) * (P1_waifw0*P2_waifw0*(1-phi^2))/(phi*P1_waifw0 - P2_waifw0)) %>%
+  mutate(R0_analyt2 = ((1-v1)*(1-v2)*(1-phi^2))/(phi*(1-v1) - (1-v2))*waifw0*paras["beta0"]/(paras["gamma"] + paras["mu"]))
+
+ggplot(data = tst_again %>% filter(v2 == 0.5, phi %in% c(0,0.5,1), prop_N1 == 0.5), 
+       aes(x = v1)) + 
+  geom_line(aes(y = R0, color = "sim")) + 
+  geom_line(aes(y = R0_analyt, color = "analyt1")) + 
+  geom_line(aes(y = R0_analyt2, color = "analyt12")) + 
+  facet_grid(cols = vars(waifw_id), rows = vars(phi)) +
+  theme_bw()
+  
+
+# let's dive in for waifw_id == 2, v1 == 0.6, v2 == 0.5, phi == 0
+tst_again %>% filter(waifw_id == 1, phi == 0, v2 == 0.5)
+
+get_Rt_twopatch(waifw[[1]], S1 = stable_age, S2 = stable_age, v1 == 0.8, v2 == 0.5,  beta0 = paras["beta0"], gamma = paras["gamma"], mu = paras["mu"], phi == 0)
 
 #### GET R0 VALUES FOR EACH WAIFW ----------------------------------------------
 
@@ -272,9 +307,10 @@ for(i in 1:nrow(scalars)){
 rt_after_release_twopatch_long = bind_rows(rt_after_release_twopatch, .id = "row_id") %>%
   mutate(row_id = as.integer(row_id)) %>%
   left_join(scalars %>% select(waifw_id, phi) %>% mutate(row_id = seq_len(n())))
-p_extinct_after_release_twopatch_long = bind_rows(p_extinct_after_release_twopatch, .id = "row_id") %>%
-  mutate(row_id = as.integer(row_id)) %>%
-  left_join(scalars %>% select(waifw_id, phi) %>% mutate(row_id = seq_len(n())))
+saveRDS(rt_after_release_twopatch_long, "data/rt_after_release_twopatch_long.rds")
+# p_extinct_after_release_twopatch_long = bind_rows(p_extinct_after_release_twopatch, .id = "row_id") %>%
+#   mutate(row_id = as.integer(row_id)) %>%
+#   left_join(scalars %>% select(waifw_id, phi) %>% mutate(row_id = seq_len(n())))
 
 # some plots to explore the effects of phi
 ggplot(data = rt_after_release_twopatch_long %>% filter(round(release_vax1,3) == 0.9, release_vax2 == 0),
@@ -284,9 +320,17 @@ ggplot(data = rt_after_release_twopatch_long %>% filter(round(release_vax1,3) ==
   facet_wrap(vars(waifw_id), labeller = labeller(waifw_id = waifw_labs), scales = "free") +
   theme_bw()
 
+susc_after_release_twopatch_wide %>% 
+  filter(time < 10, round(release_vax1,3) == 0.9, release_vax2 == 0) %>%
+  summarize(Rt = get_Rt_twopatch(waifw = waifw[[2]], S1 = S1, S2 = S2, N1 = N1, N2 = N2, 
+                                 beta0 = paras_tmp["beta0"], gamma = paras_tmp["gamma"], mu = paras_tmp["mu"], phi = tmp_phi), 
+            .by = c("time", "start_vax", "release_vax1", "release_vax2")) %>%
+  ggplot(aes(x = time, y = Rt, color = phi))
+  
+
 # honeymmon
 honeymoon_period = rt_after_release_twopatch_long %>%
-  filter(Rt > 1) %>%
+  filter(Rt > 1.05) %>%
   mutate(min_time = min(time), .by = c("waifw_id", "phi", "start_vax", "release_vax1", "release_vax2")) %>%
   filter(time == min_time) %>%
   select(-min_time)
@@ -378,10 +422,13 @@ for(j in 1:length(waifw)){
 }
 beep()
 
-some_twopatch_releases_long = bind_rows(some_twopatch_releases, .id = "waifw_id")
+some_twopatch_releases_long = bind_rows(some_twopatch_releases, .id = "waifw_id") %>%
+  mutate(patch = substr(variable, 2,2), 
+         compartment = substr(variable, 1, 1))
 
-ggplot(data = some_twopatch_releases_long %>% filter(substr(variable,1,1) == "I") %>% summarize(value = sum(value), .by = c("time", "phi", "waifw_id")), 
-       aes(x = time, y = value, color = as.factor(phi))) + 
+ggplot(data = some_twopatch_releases_long %>% filter(compartment == "I", time < 5) %>% summarize(value = sum(value), .by = c("time", "phi", "waifw_id", "patch")), 
+       aes(x = time, y = value, color = as.factor(phi), linetype = as.factor(patch))) + 
   geom_line() + 
-  facet_wrap(vars(waifw_id))
+  facet_wrap(vars(waifw_id), scales = "free", labeller = labeller(waifw_id = waifw_labs)) + 
+  theme_bw()
 
