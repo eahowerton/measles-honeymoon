@@ -294,13 +294,44 @@ Then, if $x \neq [0]$, we have
 
 \begin{align}
     \lambda_A + \phi \alpha \lambda_A &= \phi \lambda_B + \alpha \lambda_B \\
-    (\phi \lambda_A + \lambda_B) \alpha &=  \phi \lambda_B - \lambda_A   \\
-    \alpha &= \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A + \lambda_B) }
+    (\phi \lambda_A - \lambda_B) \alpha &=  \phi \lambda_B - \lambda_A   \\
+    \alpha &= \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) }
 \end{align}
 
 \noindent
-But we know that $\lambda_A$ and $\lambda_B$ are the $R_0$ values for patch 1 and patch 2, respectively. Thus, $\alpha = \frac{\phi R_{0,B} - R_{0,A}}{\phi R_{0,A} + R_{0,B}}$.
+Then, using $\lambda = (1+\phi \alpha) \lambda_A$ (which we get from our assumptions about the eigenvector), we have 
 
-We should be able to write patch specific R0 in terms of $v_1$ and $v_2$...
+\begin{align}
+    \lambda &= \lambda_A(1 + \phi \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) }) \\
+    &= \lambda_A + \lambda_A \phi \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) } \\
+    &= \frac{\lambda_A(\phi \lambda_A - \lambda_B)}{(\phi \lambda_A - \lambda_B)} + \frac{\lambda_A \phi (\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) } \\
+    &= \frac{\phi \lambda_A^2 - \lambda_A \lambda_B + \phi^2 \lambda_A \lambda_B - \phi \lambda_A^2}{(\phi \lambda_A - \lambda_B)} \\
+    &= \frac{\lambda_A \lambda_B (\phi^2 - 1)}{(\phi \lambda_A - \lambda_B)} \\
+\end{align}
+
+\noindent
+But we know that $\lambda_A$ and $\lambda_B$ are the $R_0$ values for patch 1 and patch 2, respectively. So, the R0 for the two-patch system will be 
+
+\begin{align}
+    R_0 = \frac{\beta}{\gamma + \mu} \frac{R_{0,1} R_{0,2} (1 + \phi^2)}{(\phi R_{0,1} - R_{0,2})}
+\end{align}
+
+**NOTE: this is if R0,1 and R0,2 are only for the WAIFW matrices (without beta and gamma). If they include betas and gammas, then I think you can remove the beta and gamma from the R0 calculation here. And in our case, we are assuming that $\beta /(\gamma + \mu)$ is the same in both patches. So, we actually have
+
+\begin{align}
+    R_0 =  \frac{R_{0,1} R_{0,2} (1 + \phi^2)}{(\phi R_{0,1} - R_{0,2})}
+\end{align}
+
+Now, if vaccination coverage is equivalent in both patches, then $R_{0,1} = R_{0,2}$. But, here we are primarily exploring how different vaccination coverages in each patch affect the honeymoon period. If we assume that vaccination coverage is distributed equally across all age groups, then $R_{0,i} = (1-v_i) R_0^{\text{base}}$ where $R_0^{\text{base}}$ is the basic reproduction number without vaccination. Then, the two-patch $R_0$ is
+\begin{align}
+    R_0 &=  \frac{(1-v_1) R_0^{\text{base}} (1-v_2) R_0^{\text{base}} (1 + \phi^2)}{(\phi (1-v_1) R_0^{\text{base}} - (1-v_2) R_0^{\text{base}})} \\
+    &=  \frac{(1-v_1)(1-v_2) R_0^{\text{base}} (1 + \phi^2)}{(\phi (1-v_1) - (1-v_2))} \\
+    &=  \frac{(1-v_1)(1-v_2)(1+\phi^2)}{\phi(1-v_1) - (1-v_2)} R_0^{\text{base}}
+\end{align}
+
+
+
+
+Then vaccination coverage comes into the R0 values of the individual patches...
 
 \end{document}
