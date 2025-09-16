@@ -180,9 +180,9 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
 
 # for R0 pass DFE (stable age distribution) to S
 # N is a vector of age-specific population sizes
-get_Rt <- function(waifw, S, beta0, gamma, N){
+get_Rt <- function(waifw, S, beta0, gamma, mu, N){
   S = S/N
-  NGM <- beta0 / gamma * waifw %*% diag(S)
+  NGM <- beta0 / (gamma + mu) * waifw %*% diag(S)
   eigenvalues <- eigen(NGM)$values
   R0 <- max(Re(eigenvalues))
   return(R0)
