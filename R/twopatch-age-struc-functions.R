@@ -2,7 +2,7 @@ sirtwopatch_age_structured <- function(t, x, parms, compartments, age_classes, m
                                        vax_rates1, vax_rates2, Fmat,
                                fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE){
   with(as.list(parms),{
-    x = x[1:(length(x)-5)] # remove beta hat variables for calculations
+    x = x[1:(length(x)-4)] # remove beta hat variables for calculations
     if(any(x < 0)){
       if(any(abs(x[which(x<0)]) > 1e-10)){if(print_warnings_flag){print(paste("X NEG! t = ", t)); print(x[which(x < -1e-7)])}}
       x[which(x<0)] = 0}
@@ -58,7 +58,7 @@ sirtwopatch_age_structured <- function(t, x, parms, compartments, age_classes, m
                   nrow = nage, ncol = ncomp)
     der <- c(t(der))
     names(der) <- sapply(age_classes, function(i){paste0(compartments, "_", i)})
-    der <- c(der, C = sum(lambda1*x_mat[, "S1"] + lambda2*x_mat[, "S2"]), 
+    der <- c(der, #C = sum(lambda1*x_mat[, "S1"] + lambda2*x_mat[, "S2"]), 
              BH = 0, BHi = 0, BHs = 0, BHb = 0)
     return(list(der))
   })
