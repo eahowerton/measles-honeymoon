@@ -247,11 +247,9 @@ To calculate $R_0$ in the age-structured, two patch model, we again use the Next
     \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $R_0$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
 \end{enumerate}
 
-\noindent
-To find the dominant eigenvalue of this matrix, we consider the fact that this is a block matrix 
-
+IN this case, the next generation matrix can be written in block form as 
 \[
-    NGM = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] = \frac{\beta}{\gamma + \mu} 
+    N = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] = \frac{\beta}{\gamma + \mu} 
     \begin{bmatrix}
      A & \phi A \\
         \phi B & B \\
@@ -259,79 +257,176 @@ To find the dominant eigenvalue of this matrix, we consider the fact that this i
     \]
 
 \noindent
-where $A = \theta \frac{S_1}{N_1}$ and $B = \theta \frac{S_2}{N_2}$. We will consider an eigenvector of the form $v = \begin{bmatrix}
+Now, we will consider the simplest case where the age structure and epidemiological parameters are identical in both patches. However, we will assume that vaccination coverage is different in each patch. Thus, our next generation matrix can be written as
+\[
+    N = \frac{\beta}{\gamma + \mu} 
+    \begin{bmatrix}
+     (1-v_1) C & \phi (1-v_1) C \\
+     (1-v_2)\phi C & (1-v_2) C \\
+    \end{bmatrix}
+     = 
+     \begin{bmatrix}
+     (1-v_1) & \phi (1-v_1) \\
+     (1-v_2)\phi & (1-v_2)  \\
+    \end{bmatrix} * C
+    \]
+
+\noindent
+where $C = \theta diag(A)$ is the product of the WAIFW matrix $\theta$ and a diagonal matrix with entries of the stable age distribution, $diag(A)$. Then, let $\lambda_C$ be an eigenvalue for $C$, such that $\lambda_Cx = Cx$. Then, we can consider an eigenvector of the form $v = \begin{bmatrix}
+    x \\
+    \alpha x \end{bmatrix}$. 
+
+\noindent
+Ultimately, we want to find the dominant eigenvalue $\lambda$ of the next generation matrix, such that 
+\[
+    N x = \frac{\beta}{\gamma + \mu} 
+     \begin{bmatrix}
+     (1-v_1) & \phi (1-v_1) \\
+     (1-v_2)\phi & (1-v_2)  \\
+    \end{bmatrix} * C * x = \lambda x
+\] 
+
+\noindent
+We will considering an eigenvector of the form $v = \begin{bmatrix}
     x \\
     \alpha x
-\end{bmatrix}$, which implies that 
+\end{bmatrix}$, which implies that  
+
+
+\[
+    \frac{\beta}{\gamma + \mu} 
+     \begin{bmatrix}
+     (1-v_1) & \phi (1-v_1) \\
+     (1-v_2)\phi & (1-v_2)  \\
+    \end{bmatrix} \lambda_C \begin{bmatrix}
+    x \\
+    \alpha x
+\end{bmatrix}  = \lambda \begin{bmatrix}
+    x \\
+    \alpha x
+\end{bmatrix}
+\]
+
+\noindent
+which gives (ignoring $\beta /(\gamma + \mu)$ for now)
 
 \begin{align}
-Ax + \phi \alpha Ax = \lambda x \\
- \phi Bx + \alpha Bx = \lambda x
+    (1-v_1) \lambda_C x + \phi (1-v_1) \lambda_C \alpha x &= \lambda x \\
+    (1-v_2)\phi \lambda_C x + (1-v_2) \lambda_C \alpha x &= \lambda \alpha x
+\end{align}
+
+\noindent
+Assuming that $x \neq [0]$, we have 
+\begin{align}
+    (1-v_1) \lambda_C + \phi (1-v_1) \lambda_C \alpha &= \lambda \\
+    (1-v_2)\phi \lambda_C + (1-v_2) \lambda_C \alpha &= \lambda \alpha
+\end{align}
+
+\noindent
+and this implies
+\begin{align}
+    \alpha &= \frac{\lambda - (1-v_1) \lambda_C}{\phi (1-v_1) \lambda_C} \\
+    \alpha & \frac{(1-v_2)\phi \lambda_C}{\lambda - (1-v_2) \lambda_C}
 \end{align}
 
 \noindent
 or 
 
 \begin{align}
-(1+ \phi \alpha) Ax = \lambda x \\
-(\phi + \alpha) Bx = \lambda x
-\end{align}
-
-Assume that $x$ is an eigenvector for $A$ with eignevalue $\lambda_A$ and for $B$, with eigenvalue $\lambda_B$. Then, we have $Ax = \lambda_A x$ and $Bx = \lambda_B x$. Substituting these into the equations above, we have
-
-\begin{align}
-(1+ \phi \alpha) \lambda_A x = \lambda x \\
-(\phi + \alpha) \lambda_B x = \lambda x
-\end{align}
-
-or 
-
-\begin{align}
-(1 + \phi \alpha) \lambda_A x &= (\phi + \alpha) \lambda_B x
-\end{align}
-
-Then, if $x \neq [0]$, we have
-
-\begin{align}
-    \lambda_A + \phi \alpha \lambda_A &= \phi \lambda_B + \alpha \lambda_B \\
-    (\phi \lambda_A - \lambda_B) \alpha &=  \phi \lambda_B - \lambda_A   \\
-    \alpha &= \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) }
-\end{align}
-
-\noindent
-Then, using $\lambda = (1+\phi \alpha) \lambda_A$ (which we get from our assumptions about the eigenvector), we have 
-
-\begin{align}
-    \lambda &= \lambda_A(1 + \phi \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) }) \\
-    &= \lambda_A + \lambda_A \phi \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) } \\
-    &= \frac{\lambda_A(\phi \lambda_A - \lambda_B)}{(\phi \lambda_A - \lambda_B)} + \frac{\lambda_A \phi (\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) } \\
-    &= \frac{\phi \lambda_A^2 - \lambda_A \lambda_B + \phi^2 \lambda_A \lambda_B - \phi \lambda_A^2}{(\phi \lambda_A - \lambda_B)} \\
-    &= \frac{\lambda_A \lambda_B (\phi^2 - 1)}{(\phi \lambda_A - \lambda_B)} \\
-\end{align}
-
-\noindent
-But we know that $\lambda_A$ and $\lambda_B$ are the $R_0$ values for patch 1 and patch 2, respectively. So, the R0 for the two-patch system will be 
-
-\begin{align}
-    R_0 = \frac{\beta}{\gamma + \mu} \frac{R_{0,1} R_{0,2} (1 + \phi^2)}{(\phi R_{0,1} - R_{0,2})}
-\end{align}
-
-**NOTE: this is if R0,1 and R0,2 are only for the WAIFW matrices (without beta and gamma). If they include betas and gammas, then I think you can remove the beta and gamma from the R0 calculation here. And in our case, we are assuming that $\beta /(\gamma + \mu)$ is the same in both patches. So, we actually have
-
-\begin{align}
-    R_0 =  \frac{R_{0,1} R_{0,2} (1 + \phi^2)}{(\phi R_{0,1} - R_{0,2})}
-\end{align}
-
-Now, if vaccination coverage is equivalent in both patches, then $R_{0,1} = R_{0,2}$. But, here we are primarily exploring how different vaccination coverages in each patch affect the honeymoon period. If we assume that vaccination coverage is distributed equally across all age groups, then $R_{0,i} = (1-v_i) R_0^{\text{base}}$ where $R_0^{\text{base}}$ is the basic reproduction number without vaccination. Then, the two-patch $R_0$ is
-\begin{align}
-    R_0 &=  \frac{(1-v_1) R_0^{\text{base}} (1-v_2) R_0^{\text{base}} (1 + \phi^2)}{(\phi (1-v_1) R_0^{\text{base}} - (1-v_2) R_0^{\text{base}})} \\
-    &=  \frac{(1-v_1)(1-v_2) R_0^{\text{base}} (1 + \phi^2)}{(\phi (1-v_1) - (1-v_2))} \\
-    &=  \frac{(1-v_1)(1-v_2)(1+\phi^2)}{\phi(1-v_1) - (1-v_2)} R_0^{\text{base}}
+    \frac{(1-v_2)\phi \lambda_C}{\lambda - (1-v_2) \lambda_C} &= \frac{\lambda - (1-v_1) \lambda_C}{\phi (1-v_1) \lambda_C} \\
+    (1-v_1)(1-v_2)\phi^2 \lambda_C^2 &= \lambda^2 - \lambda(1-v_1)\lambda_C - \lambda(1-v_2)\lambda_C + (1-v_1)(1-v_2)\lambda_C^2 \\
+    0 &= \lambda^2 -[(1-v_1)\lambda_C - (1-v_2)\lambda_C]\lambda + (1-v_1)(1-v_2)\lambda_C^2(1-\phi^2) \\
 \end{align}
 
 
+% \subsection{R0 more generally in the two-patch model}
+% NOTE: SOMETHING IS WRONG IN THESE CALCULATIONS...
+
+% \noindent
+% To find the dominant eigenvalue of this matrix, we consider the fact that this is a block matrix 
+
+% \[
+%     NGM = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] = \frac{\beta}{\gamma + \mu} 
+%     \begin{bmatrix}
+%      A & \phi A \\
+%         \phi B & B \\
+%     \end{bmatrix}
+%     \]
+
+% \noindent
+% where $A = \theta \frac{S_1}{N_1}$ and $B = \theta \frac{S_2}{N_2}$. We will consider an eigenvector of the form $v = \begin{bmatrix}
+%     x \\
+%     \alpha x
+% \end{bmatrix}$, which implies that 
+
+% \begin{align}
+% Ax + \phi \alpha Ax = \lambda x \\
+%  \phi Bx + \alpha Bx = \lambda x
+% \end{align}
+
+% \noindent
+% or 
+
+% \begin{align}
+% (1+ \phi \alpha) Ax = \lambda x \\
+% (\phi + \alpha) Bx = \lambda x
+% \end{align}
+
+% Assume that $x$ is an eigenvector for $A$ with eignevalue $\lambda_A$ and for $B$, with eigenvalue $\lambda_B$. Then, we have $Ax = \lambda_A x$ and $Bx = \lambda_B x$. Substituting these into the equations above, we have
+
+% \begin{align}
+% (1+ \phi \alpha) \lambda_A x = \lambda x \\
+% (\phi + \alpha) \lambda_B x = \lambda x
+% \end{align}
+
+% or 
+
+% \begin{align}
+% (1 + \phi \alpha) \lambda_A x &= (\phi + \alpha) \lambda_B x
+% \end{align}
+
+% Then, if $x \neq [0]$, we have
+
+% \begin{align}
+%     \lambda_A + \phi \alpha \lambda_A &= \phi \lambda_B + \alpha \lambda_B \\
+%     (\phi \lambda_A - \lambda_B) \alpha &=  \phi \lambda_B - \lambda_A   \\
+%     \alpha &= \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) }
+% \end{align}
+
+% \noindent
+% Then, using $\lambda = (1+\phi \alpha) \lambda_A$ (which we get from our assumptions about the eigenvector), we have 
+
+% \begin{align}
+%     \lambda &= \lambda_A(1 + \phi \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) }) \\
+%     &= \lambda_A + \lambda_A \phi \frac{(\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) } \\
+%     &= \frac{\lambda_A(\phi \lambda_A - \lambda_B)}{(\phi \lambda_A - \lambda_B)} + \frac{\lambda_A \phi (\phi \lambda_B - \lambda_A )}{(\phi \lambda_A - \lambda_B) } \\
+%     &= \frac{\phi \lambda_A^2 - \lambda_A \lambda_B + \phi^2 \lambda_A \lambda_B - \phi \lambda_A^2}{(\phi \lambda_A - \lambda_B)} \\
+%     &= \frac{\lambda_A \lambda_B (\phi^2 - 1)}{(\phi \lambda_A - \lambda_B)} \\
+% \end{align}
+
+% \noindent
+% But we know that $\lambda_A$ and $\lambda_B$ are the $R_0$ values for patch 1 and patch 2, respectively. So, the R0 for the two-patch system will be 
+
+% \begin{align}
+%     R_0 = \frac{\beta}{\gamma + \mu} \frac{R_{0,1} R_{0,2} (1 + \phi^2)}{(\phi R_{0,1} - R_{0,2})}
+% \end{align}
+
+% **NOTE: this is if R0,1 and R0,2 are only for the WAIFW matrices (without beta and gamma). If they include betas and gammas, then I think you can remove the beta and gamma from the R0 calculation here. And in our case, we are assuming that $\beta /(\gamma + \mu)$ is the same in both patches. So, we actually have
+
+% \begin{align}
+%     R_0 =  \frac{R_{0,1} R_{0,2} (1 + \phi^2)}{(\phi R_{0,1} - R_{0,2})}
+% \end{align}
+
+% Now, if vaccination coverage is equivalent in both patches, then $R_{0,1} = R_{0,2}$. But, here we are primarily exploring how different vaccination coverages in each patch affect the honeymoon period. If we assume that vaccination coverage is distributed equally across all age groups, then $R_{0,i} = (1-v_i) R_0^{\text{base}}$ where $R_0^{\text{base}}$ is the basic reproduction number without vaccination. Then, the two-patch $R_0$ is
+% \begin{align}
+%     R_0 &=  \frac{(1-v_1) R_0^{\text{base}} (1-v_2) R_0^{\text{base}} (1 + \phi^2)}{(\phi (1-v_1) R_0^{\text{base}} - (1-v_2) R_0^{\text{base}})} \\
+%     &=  \frac{(1-v_1)(1-v_2) R_0^{\text{base}} (1 + \phi^2)}{(\phi (1-v_1) - (1-v_2))} \\
+%     &=  \frac{(1-v_1)(1-v_2)(1+\phi^2)}{\phi(1-v_1) - (1-v_2)} R_0^{\text{base}}
+% \end{align}
 
 
-Then vaccination coverage comes into the R0 values of the individual patches...
+
+
+% Then vaccination coverage comes into the R0 values of the individual patches...
 
 \end{document}
