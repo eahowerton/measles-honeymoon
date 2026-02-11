@@ -102,7 +102,7 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert, IC_type =
       IC = IC_manual
     }
   }
-  IC = c(IC, C = 0, BH = 0, BHs = 0, BHi = 0, BHb = 0)
+  IC = c(IC, BH = 0, BHs = 0, BHi = 0, BHb = 0)
   return(IC)
 }
 
@@ -182,6 +182,7 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
 # N is a vector of age-specific population sizes
 get_Rt <- function(waifw, S, beta0, gamma, mu, N){
   S = S/N
+  # if(any(length(S) != dim(waifw))){browser()}
   NGM <- beta0 / (gamma + mu) * waifw %*% diag(S)
   eigenvalues <- eigen(NGM)$values
   R0 <- max(Re(eigenvalues))

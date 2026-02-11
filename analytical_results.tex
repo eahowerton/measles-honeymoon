@@ -33,7 +33,7 @@ To begin, we will consider the simplest case where (a) a population has been und
 In the SEIR model, we know there are two possible equilibria: 
 \begin{enumerate}
     \item disease-free equilibrium, where $S^* = v_0$
-    \item endemic equilibrium, where $S^* = \frac{1}{\beta}(\mu + \gamma + \frac{mu(\mu + \gamma)}{\sigma})$
+    \item endemic equilibrium, where $S^* = \frac{1}{\beta}(\mu + \gamma + \frac{\mu(\mu + \gamma)}{\sigma})$
 \end{enumerate}
 
 Here, we are only considering the first case where a population is above the herd immunity threshold, $1/R_0$, because otherwise there is no honeymoon period. We are interested in the duration of the honeymoon period, which we hypothesize will depend on a number of factors including the $R_0$ of the pathogen, the equilibrium number of susceptibles $S^*$, the birth rate $\mu$, the new vaccination coverage $v$ under decline, and  the timing of importations. Because we cannot control the timing of importations, we ignore this piece and define the honeymoon period as the time it takes for $R_e = 1/R_0*S > 1$. In other words, the time it takes for $R_e$ to cross 1 is a lower bound on the honeymoon period, where any importation after this point will start an outbreak. 
@@ -174,6 +174,8 @@ Next, we consider how the honeymoon period is affected by heterogeneity in the p
         \node (inv16) [invstate, right of=inv15]      {};
         \node (inv17) [space, left of=S2]             {};
         \node (inv18) [invstate, left of=inv17]       {};
+        \node (inv19) [space, right of=R2]            {};
+        \node (inv20) [invstate, right of=inv19]      {};
         %% arrows
         \draw [arrow] (S1) -- (I1);
         \draw [arrow] (I1) -- (R1);
@@ -182,21 +184,24 @@ Next, we consider how the honeymoon period is affected by heterogeneity in the p
         \draw [arrow] (inv14) -- (S1);
         \draw [arrow] (inv16) -- (R1);
         \draw [arrow] (inv18) -- (S2);
+        \draw [arrow] (inv20) -- (R2);
         %% parameters
         \node (parS1-I1) 
-              [right of=S1, xshift = 1cm, yshift=0.25cm] {$(\beta I_1 + \phi \beta I_2)/N_1$};
+              [right of=S1, xshift = 1cm, yshift=0.4cm] {$\frac{\beta I_1 + \phi \beta I_2}{N_1}$};
         \node (parI1-R1) 
               [right of=I1, xshift = 1cm, yshift=0.25cm] {$\gamma$};
         \node (parS2-I2) 
-              [right of=S2, xshift = 1cm, yshift=0.25cm] {$(\phi \beta I_1 + \beta I_2)/N_2$};
+              [right of=S2, xshift = 1cm, yshift=0.4cm] {$\frac{\phi \beta I_1 + \beta I_2}{N_2}$};
         \node (parI2-R2) 
               [right of=I2, xshift = 1cm, yshift=0.25cm] {$\gamma$};
         \node (par-S1) 
-              [left of=S1, xshift = -0.5cm, yshift=0.25cm] {$(1-v_e) v \mu$};
+              [left of=S1, xshift = -0.4cm, yshift=0.25cm] {$(1-v_1) \mu$};
         \node (par-S2) 
-              [left of=S2, xshift = -0.3cm, yshift=0.25cm] {$(1-v) \mu$};
+              [left of=S2, xshift = -0.4cm, yshift=0.25cm] {$(1-v_2) \mu$};
         \node (par-R1) 
-              [right of=R1, xshift = 0.3cm, yshift=0.25cm] {$v_e v \mu$};
+              [right of=R1, xshift = 0.1cm, yshift=0.25cm] {$ v_1 \mu$};
+        \node (par-R2) 
+              [right of=R2, xshift = 0.1cm, yshift=0.25cm] {$ v_2 \mu$};
     \end{tikzpicture}
 \end{center}
 
@@ -337,6 +342,8 @@ or
     (1-v_1)(1-v_2)\phi^2 \lambda_C^2 &= \lambda^2 - \lambda(1-v_1)\lambda_C - \lambda(1-v_2)\lambda_C + (1-v_1)(1-v_2)\lambda_C^2 \\
     0 &= \lambda^2 -[(1-v_1)\lambda_C - (1-v_2)\lambda_C]\lambda + (1-v_1)(1-v_2)\lambda_C^2(1-\phi^2) \\
 \end{align}
+
+which can be factored using the quadratic formula 
 
 
 % \subsection{R0 more generally in the two-patch model}

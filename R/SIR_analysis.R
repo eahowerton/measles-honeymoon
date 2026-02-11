@@ -827,7 +827,7 @@ equilibrium_S %>%
 # we can solve this for t to get the time until S crosses the threshold making Re > 1
 
 return_time = equilibrium_S %>%
-  merge(data.frame(new_v = seq(0, 0.6, 0.02))) %>%
+  merge(data.frame(new_v = seq(0, 0.9, 0.02))) %>%
   mutate(time_to_cross = -1/mu * log(((1/R0) - (1-new_v))/(S_star - (1-new_v))))
 
 return_time %>%
@@ -842,24 +842,36 @@ return_time %>%
   theme(legend.position = "bottom")
 
 return_time %>%
-  filter(beta0 == 1000, v %in% c(0.93, 0.95, 0.97, 0.99), mu == 1/50) %>%
+  filter(beta0 == 1000, v %in% c(0.93, 0.95, 0.97, 0.99), mu == 1/50, new_v < 0.6) %>%
   ggplot(aes(x = new_v, y = time_to_cross, color = as.factor(v))) + 
   geom_path(size = 1) +
-  scale_color_brewer(palette = "Set1", name = "vax coverage before drop") +
-  scale_x_continuous(label = scales::percent, name = "vax coverage after drop") + 
+  scale_color_manual(values = RColorBrewer::brewer.pal(6, "YlOrBr")[3:6], name = "coverage\nbefore drop") +
+  scale_x_continuous(label = scales::percent, name = "coverage after drop") +
   scale_y_continuous(name = "time to Re > 1") + 
   theme_bw() + 
   theme(legend.position = "bottom")
+ggsave("figures/honeymoon_SIR_sub.pdf", width = 4, height = 4.5)
+
+return_time %>%
+  filter(beta0 == 1000, v %in% c(0.93, 0.95, 0.97, 0.99), mu == 1/50) %>%
+  ggplot(aes(x = new_v, y = time_to_cross, color = as.factor(v))) + 
+  geom_path(size = 1) +
+  scale_color_manual(values = RColorBrewer::brewer.pal(6, "YlOrBr")[3:6], name = "coverage\nbefore drop") +
+  scale_x_continuous(label = scales::percent, name = "coverage after drop") + 
+  scale_y_continuous(name = "time to Re > 1") + 
+  theme_bw() + 
+  theme(legend.position = "bottom")
+ggsave("figures/honeymoon_SIR_full.pdf", width = 4, height = 4.5)
 
 # but this is also a surface, which allows us to find "equivalent" pre-post 
 # vaccination coverages that will give us the same honeymoon time
 
 return_time %>%
-  filter(beta0 == 1000, mu == 1/50, v > 0.9) %>%
+  filter(beta0 == 1000, mu == 1/50, v > 0.9, new_v < 0.6) %>%
   ggplot(aes(x = new_v, y = v)) + 
   geom_tile(aes(fill = time_to_cross)) +
-  geom_contour(aes(z = time_to_cross), color = "black", breaks = c(1, 3, 5, 7, 9)) + 
-  metR::geom_text_contour(aes(z = time_to_cross), stroke = 0.15) +
+  geom_contour(aes(z = time_to_cross), color = "black", breaks = c(0, 1, 3, 5, 7, 9)) + 
+  metR::geom_text_contour(aes(z = time_to_cross), stroke = 0.15, breaks = c(0, 1, 3, 5, 7, 9)) +
   scale_fill_distiller(palette = "BuGn", name = "time to Re > 1") +
   # geom_path(data = expand.grid(t = seq(1, 9, 2), VERIFYING ANALYTICAL RESULT
   #                              new_v = seq(0, 0.6, 0.02), 
@@ -877,6 +889,32 @@ return_time %>%
                      name = "vax coverage before drop") + 
   theme_bw() + 
   theme(legend.position = "bottom")
+ggsave("figures/honeymoon_heatmap_SIR_sub.pdf", width = 4, height = 4.5)
+
+return_time %>%
+  filter(beta0 == 1000, mu == 1/50, v > 0.9) %>%
+  ggplot(aes(x = new_v, y = v)) + 
+  geom_tile(aes(fill = time_to_cross)) +
+  geom_contour(aes(z = time_to_cross), color = "black", breaks = c(0, 1, 3, 5, 7, 9, 15, 30)) + 
+  metR::geom_text_contour(aes(z = time_to_cross), stroke = 0.15, breaks = c(0, 1, 3, 5, 7, 9, 15, 30)) +
+  scale_fill_distiller(palette = "BuGn", name = "time to Re > 1") +
+  # geom_path(data = expand.grid(t = seq(1, 9, 2), VERIFYING ANALYTICAL RESULT
+  #                              new_v = seq(0, 0.6, 0.02), 
+  #                              beta0 = 1000, 
+  #                              mu = 1/50, 
+  #                              sigma = paras["sigma"],
+  #                              gamma = paras["gamma"]) %>%
+  #             mutate(R0 = (beta0*sigma)/((gamma + mu)*(sigma + mu)), 
+  #                    v_test = new_v - exp(mu*t) * (1/R0 - (1-new_v))) %>% 
+  #             filter(v_test < 1), 
+  #           aes(y = v_test, group = t), color = 'red') + 
+  scale_x_continuous(expand = c(0,0), label = scales::percent, 
+                     name = "vax coverage after drop") + 
+  scale_y_continuous(expand = c(0,0), label = scales::percent, 
+                     name = "vax coverage before drop") + 
+  theme_bw() + 
+  theme(legend.position = "bottom")
+ggsave("figures/honeymoon_heatmap_SIR_full.pdf", width = 4, height = 4.5)
 
 # so there is non-linearity in how long we expect the honeymoon to be, which 
 # become more extreme as vaccination coverage gets higher

@@ -36,17 +36,17 @@ start_vax = c(0.9, 0.92, 0.94, 0.96)
 #### GET R0 VALUES FOR EACH WAIFW ----------------------------------------------
 stable_age = findStableStruct(age_classes, mort, fert, 1/52)$stable.age
 
-find_scalar = function(s, R0, waifw, S, beta0, gamma, N){
+find_scalar = function(s, R0, waifw, S, beta0, gamma, mu, N){
   # print(paste0("s: ", s, " R0: ", get_Rt(waifw, S, beta0*s, gamma, N)))
-  diff = get_Rt(waifw, S, beta0*s, gamma, N) - R0
+  diff = get_Rt(waifw, S, beta0*s, gamma, mu, N) - R0
   return(abs(diff))
 }
 
 scalars = data.frame(waifw_id = 1:5, scalar = NA, diff = NA)
 for(i in 1:length(waifw)){
   o = optimize(f = find_scalar, tol = 1e-8, interval = c(0, 100), R0 = R0,
-               waifw = waifw[[i]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"], N = 1)
-  print(get_Rt(waifw[[i]], stable_age, paras["beta0"]*o$minimum, paras["gamma"], 1))
+               waifw = waifw[[i]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"],  mu = paras["mu"], N = 1)
+  print(get_Rt(waifw[[i]], stable_age, paras["beta0"]*o$minimum, paras["gamma"],  mu = paras["mu"], N = 1))
   scalars[i, 2:3] = c(o$minimum, o$objective)
 }
 

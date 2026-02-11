@@ -2,6 +2,8 @@
 sir_age_structured = function(t, x, parms, compartments, age_classes, mort, vax_change_times, vax_rates, Fmat,
                                fert, waifw, adjust_beta_flag = FALSE, print_warnings_flag = FALSE, burnin = 0){
   with(as.list(parms),{
+    # print(t)
+    # if(t > 0){browser()}
     x = x[1:(length(x)-4)] # remove beta hat variables for calculations
     if(any(x < 0)){x[which(x<0)] = 0; if(t< burnin){x[seq(2, length(x),3)] = x[seq(2, length(x),3)] + 10}; print(paste0("adj at t = ", t))} # check x is non-neg
     nage = length(age_classes)
@@ -51,15 +53,15 @@ sir_age_structured = function(t, x, parms, compartments, age_classes, mort, vax_
     der = c(dS, dI, dR)
     names(der) = sapply(compartments, function(i){paste0(i, "_", age_classes)})
     der = matrix(c(dS, dI, dR), 
-                  nrow = nage, ncol = ncomp)
+                 nrow = nage, ncol = ncomp)
     der = c(t(der))
     names(der) = sapply(age_classes, function(i){paste0(compartments, "_", i)})
-    # browser()
     der = c(der, 
-             BH = sum(lambda*x_mat[, "S"]),
-             BHs = sum(lambda*homogeneous_s), 
-             BHi = sum(waifw%*%(beta/N*homogeneous_i)*x_mat[, "S"]), 
-             BHb = sum(waifw%*%(beta/N*homogeneous_i)*homogeneous_s))
+            BH = sum(lambda*x_mat[, "S"]),
+            BHs = sum(lambda*homogeneous_s), 
+            BHi = sum(waifw%*%(beta/N*homogeneous_i)*x_mat[, "S"]), 
+            BHb = sum(waifw%*%(beta/N*homogeneous_i)*homogeneous_s))
+    if(any(is.na(der))){browser()}
     return(list(der))
   })
 }
