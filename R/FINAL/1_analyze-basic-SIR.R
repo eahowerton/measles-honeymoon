@@ -95,9 +95,10 @@ p = return_time %>%
   geom_path(size = 1) +
   scale_color_manual(values = RColorBrewer::brewer.pal(5, "Greys")[2:4], name = "coverage\nbefore drop", 
                      labels = paste0(pre_v*100, "%")) +
-  scale_x_continuous(breaks = seq(0, 9, 0.3), label = scales::percent, name = "coverage after drop") + 
+  scale_x_continuous(breaks = seq(0, 9, 0.3), expand = c(0,0),
+                     label = scales::percent, name = "coverage after drop") + 
   scale_y_continuous(name = "time to Re > 1") + 
-  theme_bw() + 
+  theme_bw(base_size = 7) + 
   theme(legend.position = "bottom")
 
 
@@ -119,9 +120,9 @@ ggsave("R/FINAL/figures/honeymoon_SIR_full.pdf", width = 4, height = 4.5)
 # was high to start with 
 
 
-broader_return_time = expand.grid(mu = seq(1/50, 1/80, length.out = 6), 
+broader_return_time = expand.grid(mu = c(1/50, 1/80), 
                             beta0 = paras["beta0"], 
-                            v = pre_v, 
+                            v = seq(0.93, 1, 0.005), 
                             gamma = paras["gamma"], 
                             new_v = seq(0, 0.90, 0.01)) %>%
   mutate(R0 = (beta0)/((gamma + mu)), 
@@ -130,23 +131,26 @@ broader_return_time = expand.grid(mu = seq(1/50, 1/80, length.out = 6),
                          (mu + gamma)/beta0)) %>%
   mutate(time_to_cross = -1/mu * log(((1/R0) - (1-new_v))/(S_star - (1-new_v))))
 
-ggplot(data = broader_return_time, aes(x = mu, y = new_v, fill = time_to_cross)) +
-  geom_tile() + 
-  geom_contour(aes(z = time_to_cross), color = "black", breaks = c(1, 3, 5, 10)) + 
-  metR::geom_label_contour(aes(z = time_to_cross), breaks = c(1, 3, 5, 10)) + 
-  facet_wrap(vars(v)) + 
-  scale_fill_distiller(palette = "Greys") + 
-  scale_x_continuous(expand = c(0,0)) + 
-  scale_y_continuous(expand = c(0,0))
+g = ggplot(broader_return_time, aes(x = new_v, y = v)) + 
+  geom_tile(aes(fill = time_to_cross)) + 
+  geom_contour(aes(z = time_to_cross), color = "black", breaks = c(1, 5, 10, 15), linewidth = 0.25) + 
+  metR::geom_text_contour(aes(z = time_to_cross), stroke = 0.15, breaks = c(1, 5, 10, 15), size = 2) +
+  facet_wrap(vars(-1/mu), ncol = 1, labeller = label_both) +#, switch = "y") + 
+  scale_fill_distiller(palette = "Blues", direction = 0, name = "time to\nRe > 1") +
+  scale_linetype_manual(values = c("longdash", "solid", "dotted")) +
+  scale_x_continuous(expand = c(0,0), breaks = seq(0, 0.9, 0.3), label = scales::percent, 
+                     name = "coverage after drop") + 
+  scale_y_continuous(expand = c(0,0), label = scales::percent, 
+                     name = "coverage before drop") + 
+  theme_bw(base_size = 7) + 
+  theme(legend.position = "bottom", 
+        strip.background = element_blank())#, 
+        # strip.placement = "outside")
 
-
-broader_return_time %>%
-  filter(v != 0.94) %>%
-  ggplot(aes(x = new_v, y = time_to_cross, color = as.factor(1/mu))) + 
-  geom_path(size = 1) +
-  facet_wrap(vars(v)) + 
-  scale_x_continuous(breaks = seq(0, 9, 0.3), label = scales::percent, name = "coverage after drop") + 
-  scale_y_continuous(name = "time to Re > 1") + 
-  theme_bw() + 
-  theme(legend.position = "bottom")
+cowplot::plot_grid(p + theme(legend.position = c(0.15, 0.77)), 
+                   g + theme(legend.position = "right"), 
+                   #align = "h", axis = "tb", 
+                   rel_widths = c(0.55, 0.45),
+                   labels = c("A", "B"), label_size = 8)
+ggsave("R/FINAL/figures/Figure2.pdf", width = 6, height = 3)
 
