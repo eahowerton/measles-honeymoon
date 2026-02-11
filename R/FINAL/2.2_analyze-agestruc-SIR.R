@@ -53,73 +53,15 @@ for(i in 1:length(waifw)){
 paras_all = lapply(1:5, function(i){paras_tmp = paras; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,2]; return(paras_tmp)})
 paras_all_noimport = lapply(1:5, function(i){paras_tmp = paras; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,2]; return(paras_tmp)})
 
-#### CONFIRM EQUILIBRIA ARE CLOSE, AFTER USING THESE SCALARS -------------------
-vax_equilib = vector("list", length(waifw))
-for(j in 1:length(start_vax)){
-  print(paste0("j: ", j, "/", length(start_vax)))
-  tmp = vector("list", length(waifw))
-  for(i in 1:length(waifw)){
-    print(i)
-    Fmat = buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = length(compartments))
-    IC = setup_IC(start_pop = paras["N"], age_classes = age_classes, 
-                  compartments = compartments, mort = mort, fert = fert, 
-                  IC_type = "stable-age-noI", dt = 1/52)
-    t = runsteady(
-      y = IC, times = c(0, 750), func = sir_age_structured, parms = paras_all[[i]], # runsteady arguments
-      compartments = compartments, age_classes = age_classes, mort = mort, fert = fert,
-      vax_change_times = c(0), vax_rates = c(start_vax[j]),
-      waifw = waifw[[i]], length(age_classes), rtol = 1e-12, atol = 1e-12,
-      Fmat = Fmat, adjust_beta_flag = FALSE, print_warnings_flag = FALSE
-    )
-    tmp[[i]] = data.frame(variable = names(t$y), 
-                          value = t$y, 
-                          time = attr(t, "time"),
-                          steady = attr(t, "steady"), 
-                          waifw_id = i, 
-                          start_vax = start_vax[j])
-  }
-  vax_equilib[[j]] = bind_rows(tmp)
-}
-
-vax_equilib_long = bind_rows(vax_equilib) %>%
-  mutate(age = ifelse(substr(variable, 1, 1) %in% compartments, 
-                      as.double(substr(variable, 3, nchar(variable))), NA), 
-         variable = ifelse(substr(variable, 1, 1) %in% compartments, substr(variable, 1, 1), variable)) %>%
-  mutate(age = round(age, 4)) %>%
-  left_join(data.frame(age = round(age_classes, 4), 
-                       bin_width = bin_width))
-
-# plot results to do some checks
-vax_equilib_long %>%
-  filter(variable %in% c("S", "I", "R")) %>%
-  summarize(value = sum(value), .by = c("waifw_id", "start_vax", "variable")) %>%
-  ggplot(aes(x = start_vax, y = value, color = as.factor(waifw_id))) + 
-  geom_point() + 
-  geom_line() +
-  facet_wrap(vars(variable), scales = "free") + 
-  theme_bw()
-
-vax_equilib_long %>%
-  filter(variable == "S") %>%
-  mutate(value_scaled = value/bin_width) %>%
-  ggplot(aes(x = age, y = value_scaled, color = as.factor(waifw_id))) +
-  geom_line() + 
-  geom_line(data = data.frame(x = age_classes, y = stable_age*paras["N"]*(1-start_vax)/(bin_width)),
-  aes(x = x, y = y), linetype = "dotted", color = "black") +
-  facet_wrap(vars(start_vax), scales = 'free') +
-  theme_bw()
-
-vax_equilib_long %>%
-  tidyr::spread(variable, value) %>%
-  mutate(N = S + I + R, prop_S = S/N, prop_age = N/paras["N"]) %>%
-  filter(waifw_id == 1) %>%
-  ggplot(aes(x = age, y = prop_age/bin_width)) + 
-  geom_line() + 
-  geom_line(data = data.frame(x = age_classes, y = stable_age/bin_width),
-            aes(x = x, y = y), linetype = "dotted", color = "black")
-
-vax_equilib_long %>%
-  
+#### SET PRE-VACCINATION EQULIBRIUM --------------------------------------------
+# pre-vax equilibrium = (1-vax_cov)*N(a) where N(a) is stable age distribution
+vax_equilib_long = expand.grid(age = age_classes, 
+                   N = stable_age*paras["N"], 
+                   waifw_id = 1:length(waifw), 
+                   start_vax = start_vax, 
+                   variable = c("S", "I", "R")) %>%
+  mutate(value = ifelse(variable == "S", N*(1-start_vax), ifelse(variable == "I", 0, N*start_vax))) %>%
+  left_join(data.frame(age = age_classes, bin_width = bin_width))
 
 #### CALCULATE HONEYMOON TIME --------------------------------------------------
 # i.e., simulate across the full range of release vax values
