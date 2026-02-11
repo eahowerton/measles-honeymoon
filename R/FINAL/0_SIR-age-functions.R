@@ -47,7 +47,6 @@ sir_age_structured = function(t, x, parms, compartments, age_classes, mort, vax_
       N_fert[, "I"] + N_age_in[, "I"] - N_age_out[, "I"]
     dR = gamma * x_mat[, "I"] - mort * x_mat[, "R"] +
       N_fert[, "R"] + N_fert[, "S"] * v + N_age_in[, "R"] - N_age_out[, "R"] 
-    # NOTE: may want to put v and (1-v in the f matrix instead)
     der = c(dS, dI, dR)
     names(der) = sapply(compartments, function(i){paste0(i, "_", age_classes)})
     der = matrix(c(dS, dI, dR), 
