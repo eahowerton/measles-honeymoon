@@ -16,6 +16,9 @@ source("R/FINAL/0_SIR-age-functions.R")
 
 #### MODEL SETUP ---------------------------------------------------------------
 source("R/FINAL/2.1_setup-WAIFW.R") # this will add waifw to environment, which is list of WAIFW matrices to test
+susc_after_release_long = readRDS("R/FINAL/data/susc_after_release_long.rds")
+rt_after_release_full_long = readRDS("R/FINAL/data/rt_after_release_long.rds")
+
 n_waifw = length(waifw)
 
 compartments = c("S", "I", "R")
@@ -24,6 +27,9 @@ R0 <- 17
 paras = c(mu = 1/80, N = 500000, beta1 = 0,
           gamma = 365/14, delta = 0, p = 0, phi = 1) # delta = 1e-4
 paras["beta0"]  = (paras["gamma"] + paras["mu"])*R0
+
+fert = rep(paras["mu"], length(age_classes))
+mort = rep(paras["mu"], length(age_classes))
 
 start_vax = 0.95
 
@@ -48,41 +54,15 @@ for(i in 1:length(waifw)){
 paras_all = lapply(1:5, function(i){paras_tmp = paras; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,2]; return(paras_tmp)})
 paras_all_noimport = lapply(1:5, function(i){paras_tmp = paras; paras_tmp["beta0"] = paras_tmp["beta0"]*scalars[i,2]; return(paras_tmp)})
 
-#### CONFIRM EQUILIBRIA ARE CLOSE, AFTER USING THESE SCALARS -------------------
-vax_equilib = vector("list", length(waifw))
-for(j in 1:length(start_vax)){
-  print(paste0("j: ", j, "/", length(start_vax)))
-  tmp = vector("list", length(waifw))
-  for(i in 1:length(waifw)){
-    print(i)
-    Fmat = buildFMatrix(age.classes = age_classes, fert = fert, ncompartments = length(compartments))
-    IC = setup_IC(start_pop = paras["N"], age_classes = age_classes, 
-                  compartments = compartments, mort = mort, fert = fert, 
-                  IC_type = "stable-age-noI", dt = 1/52)
-    t = runsteady(
-      y = IC, times = c(0, 750), func = sir_age_structured, parms = paras_all[[i]], # runsteady arguments
-      compartments = compartments, age_classes = age_classes, mort = mort, fert = fert,
-      vax_change_times = c(0), vax_rates = c(start_vax[j]),
-      waifw = waifw[[i]], length(age_classes), rtol = 1e-12, atol = 1e-12,
-      Fmat = Fmat, adjust_beta_flag = FALSE, print_warnings_flag = FALSE
-    )
-    tmp[[i]] = data.frame(variable = names(t$y), 
-                          value = t$y, 
-                          time = attr(t, "time"),
-                          steady = attr(t, "steady"), 
-                          waifw_id = i, 
-                          start_vax = start_vax[j])
-  }
-  vax_equilib[[j]] = bind_rows(tmp)
-}
-
-vax_equilib_long = bind_rows(vax_equilib) %>%
-  mutate(age = ifelse(substr(variable, 1, 1) %in% compartments, 
-                      as.double(substr(variable, 3, nchar(variable))), NA), 
-         variable = ifelse(substr(variable, 1, 1) %in% compartments, substr(variable, 1, 1), variable)) %>%
-  mutate(age = round(age, 4)) %>%
-  left_join(data.frame(age = round(age_classes, 4), 
-                       bin_width = bin_width))
+#### SET PRE-VACCINATION EQULIBRIUM --------------------------------------------
+# pre-vax equilibrium = (1-vax_cov)*N(a) where N(a) is stable age distribution
+vax_equilib_long = expand.grid(age = age_classes, 
+                               start_vax = start_vax, 
+                               variable = c("S", "I", "R")) %>%
+  left_join(data.frame(age = age_classes, 
+                       bin_width = bin_width, 
+                       N = stable_age*paras["N"])) %>%
+  mutate(value = ifelse(variable == "S", N*(1-start_vax), ifelse(variable == "I", 0, N*start_vax)))
 
 #### RELEASE VACCINATION WITH EACH WAIFW ---------------------------------------
 release_vax = 0.2
@@ -92,16 +72,14 @@ release_sim_df = vector("list", length(waifw))
 # IC_release = vector("list", length(waifw))
 for(i in 1:length(waifw)){
   print(paste0(i, "/", length(waifw)))
-  IC_manual = vax_equilib_long %>% filter(waifw_id == i, !(variable %in% c("BH", "BHs", "BHi", "BHb")))
+  IC_manual = vax_equilib_long %>% arrange(age)
   names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
   IC_manual = IC_manual$value
   names(IC_manual) = names_IC
-  # try putting all I individuals in one compartment (say age 7)
+  # try putting all I individuals in age 5
   I_indx = which(substr(names(IC_manual), 1, 1) == "I")
-  tot_I = sum(IC_manual[I_indx])
-  IC_manual[I_indx] = 0
   IC_manual[which(names(IC_manual) == "I_5")] = 1
-  IC_manual[which(names(IC_manual) == "R_5")] = IC_manual[which(names(IC_manual) == "R_5")] - (tot_I - 1)
+  IC_manual[which(names(IC_manual) == "R_5")] = IC_manual[which(names(IC_manual) == "R_5")] - 1
   release_sim_df[[i]] = run_ode(
     age_classes = age_classes, mort = mort,
     fert = fert, start_pop = paras_jcm["N"],
@@ -131,13 +109,23 @@ Rt_long = release_sim_df_long %>%
                         gamma = paras["gamma"], mu = paras["mu"], 
                         N = paras["N"]), .by = c("time", "waifw_id"))
 
+max_contacts = lapply(waifw, melt) %>%
+  bind_rows(.id = "waifw_id") %>%
+  mutate(value_scaled = value/max(value), .by = c("waifw_id")) %>%
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>% 
+  mutate(m = max(value), .by = c("waifw_id")) %>%
+  filter(value == m, waifw_id != 1) %>%
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3)))
+
 # try making plot with each waifw in one col (easier to interpret?)
 age_labs = c(seq(3,15,3))
 pt0 = lapply(waifw, melt) %>%
   bind_rows(.id = "waifw_id") %>%
   mutate(value_scaled = value/max(value), .by = c("waifw_id")) %>%
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
   ggplot(aes(x = Var1, y = Var2, fill = value_scaled)) + 
   geom_tile() + 
+  geom_text(data = max_contacts, aes(label = round(m)), size = 2) +
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
   scale_fill_distiller(palette = "YlGnBu") + 
   scale_x_continuous(expand = c(0,0),
@@ -152,7 +140,8 @@ ggsave("R/FINAL/figures/waifws.pdf", pt0,  width = 8, height = 2.5)
 pt1 = release_sim_df_long %>%
   filter(variable %in% c("I")) %>%
   summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
-  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
+  ggplot(aes(x = time, y = value/paras["N"], color = as.factor(waifw_id))) + 
   geom_line(data = release_sim_df_long %>%
               filter(variable %in% c("I"), waifw_id == 1) %>%
               summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>% select(-waifw_id), linewidth = 0.8, color = "black") +
@@ -168,6 +157,7 @@ pt1 = release_sim_df_long %>%
         strip.background = element_blank())
 pt2 = unity_beta_long %>%
   filter(variable == "BH") %>%
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
   ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
   geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
                               waifw_id = 1,
@@ -180,13 +170,14 @@ pt2 = unity_beta_long %>%
   guides(color = FALSE) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
-  scale_y_continuous(limits = c(-1, 1)*10, name = "log(beta hat)") +
+  scale_y_continuous(limits = c(-1, 1)*10, name = "log(unity beta)") +
   theme_bw() +
   theme(legend.title = element_blank(), 
         legend.position = "none",
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
-pt3 = Rt_long %>% 
+pt3 = Rt_long %>%
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>% 
   ggplot(aes(x = time, y = Rt, color = as.factor(waifw_id))) + 
   geom_hline(yintercept = 1, linetype = "dotted") + 
   geom_line(data = Rt_long %>% filter(waifw_id == 1) %>% select(-waifw_id), 
@@ -203,7 +194,8 @@ pt3 = Rt_long %>%
         strip.background = element_blank())
 pt4 = release_sim_df_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
   mutate(bin_width = bin_width[as.factor(age)], 
-         value = value/bin_width) %>% 
+         value = value/bin_width) %>%
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>% 
   dcast(time + age + waifw_id ~ variable, value.var = "value") %>%
   ggplot(aes(x = time, y = age)) + 
   geom_tile(aes(fill = S)) + 
@@ -219,8 +211,9 @@ pt4 = release_sim_df_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
   theme(legend.position = "none",
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
-pt0/pt1/pt2/pt3/pt4 #+ 
-  # plot_annotation(title = 'release from 94% coverage to 60%')
+
+cowplot::plot_grid(pt0, pt3, pt1, pt4, pt2, ncol = 1, labels = LETTERS[1:5], align = "v", axis = "lr")
+
 ggsave("R/FINAL/figures/release_examples_age.pdf", width = 8, height = 10)
 
 # show different beta hat values
