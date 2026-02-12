@@ -152,5 +152,5 @@ cowplot::plot_grid(p + theme(legend.position = c(0.15, 0.77)),
                    #align = "h", axis = "tb", 
                    rel_widths = c(0.55, 0.45),
                    labels = c("A", "B"), label_size = 8)
-ggsave("R/FINAL/figures/Figure2.pdf", width = 6, height = 3)
+ggsave("R/FINAL/figures/Figure1.pdf", width = 6, height = 3)
 
