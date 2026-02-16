@@ -60,13 +60,13 @@ who_pop = read.csv(paste0(folder, "PopdownloadDec2024.csv")) %>%
   mutate(year = as.integer(substr(year, 2, 5)))
 who_regions = read.csv(paste0(folder, "map.countries.regions.csv"))
 
-combined = left_join(
+combined = full_join(
   who_births %>% filter(Series.Code == "SP.DYN.CBRT.IN") %>% rename(country_name = Country.Name) %>% select(country_name, year, birth_rate) %>% mutate(birth_rate = as.double(birth_rate)), 
-  who_vacc %>% rename(country_name = NAME) %>% select(country_name, year, coverage) %>% mutate(coverage = coverage/100), by = join_by(country_name, year)) %>% 
-  left_join(
-    who_pop %>% rename(country_name = X) %>% mutate(pop = as.double(pop)), by = join_by(country_name, year)
+  who_vacc %>% rename(country_name = NAME) %>% select(country_name, year, coverage) %>% mutate(coverage = coverage/100)) %>% 
+  full_join(
+    who_pop %>% rename(country_name = X) %>% mutate(pop = as.double(pop))
   ) %>% 
-  left_join(who_regions %>% rename(country_name = `Country...Region`) %>% melt(c("country_name"), variable.name = "region") %>% filter(!is.na(value)) %>% select(-value) %>% mutate(region = gsub(".region", "", region)))
+  full_join(who_regions %>% rename(country_name = `Country...Region`) %>% melt(c("country_name"), variable.name = "region") %>% filter(!is.na(value)) %>% select(-value) %>% mutate(region = gsub(".region", "", region)))
 
 # interpolate coverage where necessary
 interp_vals = function(vals, yright = 1, yleft = 1){
@@ -83,7 +83,7 @@ combined = combined %>%
   # remove values > 1
   mutate(interp_coverage = ifelse(interp_coverage > 1, 1, interp_coverage))
 
-start_yr = 1990
+start_yr = 2000
 who_drops_by_country = combined %>% 
   filter(year >= start_yr) %>%
   arrange(country_name, year) %>%
@@ -112,35 +112,35 @@ p0 = combined %>%
                      labels = c("AFRO", "AMRO", "WPRO", "SEARO")) + 
   scale_fill_manual(values = RColorBrewer::brewer.pal(8, "Accent")[5:8],
                     labels = c("AFRO", "AMRO", "WPRO", "SEARO")) + 
-  theme_bw() + 
+  theme_bw(base_size = 7) + 
   theme(legend.position = c(0.65, 0.2), 
         legend.direction = "horizontal",
         panel.grid = element_blank())
 p1 = ggplot(data = who_drops_by_country_summ %>% filter(nyears_data > 1) %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin")), 
        aes(x = nyears_drop, y = drop_bin - bin_width/2)) + # subtract bin_width/2 to get midpoint of bin on x-axis
   geom_tile(aes(alpha = n), fill = "blue") +
-  geom_point(data = who_drops_by_country %>% filter(country_name %in% example_countries2),
-             aes(y = drop)) +
-  geom_text(data = who_drops_by_country %>% filter(country_name %in% example_countries2),
-            aes(y = drop, label = paste0("\n", country_name)), size = 3) +
+  geom_point(data = who_drops_by_country %>% filter(country_name %in% example_countries),
+             aes(y = drop), size = 1) +
+  geom_text(data = who_drops_by_country %>% filter(country_name %in% example_countries),
+            aes(y = drop, label = paste0("\n", country_name)), size = 2) +
   scale_x_continuous(expand = c(0,0), name = "consecutive years dropping",
                       breaks = seq(0, 8, 2)) +
-  scale_y_continuous(expand = c(0,0),
+  scale_y_continuous(expand = c(0,0), labels = scales::percent,
                      name = "largest coverage drop", limits = c(-1, 0)) +
-  theme_bw() +
+  theme_bw(base_size = 7) +
   theme(legend.position = "none", 
         panel.grid = element_blank())
-p2 = combined %>% filter(country_name %in% example_countries2, year > 1980) %>% 
+p2 = combined %>% filter(country_name %in% example_countries, year > 1980) %>% 
   left_join(who_drops_by_country) %>% 
   mutate(drop_flag = ifelse(year >= start_yr & year <= start_yr + nyears_drop, TRUE, FALSE)) %>%
   filter(drop_flag) %>%
   ggplot(aes(x = year, y = coverage)) + 
-  geom_vline(xintercept = start_yr, linetype = "dotted") + 
-  geom_line(data = combined %>% filter(country_name %in% example_countries2, year > 1980)) +
-  geom_line(color = "red", size = 1) +
+  geom_vline(xintercept = start_yr, linetype = "dotted", size = 0.4) + 
+  geom_line(data = combined %>% filter(country_name %in% example_countries, year > 1980), size = 0.4) +
+  geom_line(color = "red", size = 0.6) +
   facet_wrap(vars(country_name), ncol = 2) + 
-  scale_y_continuous(name = "MCV1 coverage") + 
-  theme_bw() + 
+  scale_y_continuous(name = "MCV1 coverage", labels = scales::percent) + 
+  theme_bw(base_size = 7) + 
   theme(panel.grid = element_blank(), 
         strip.background = element_blank())
 p_who = plot_grid(p0, p1, p2, nrow = 1, labels = c("A", "B", "C"))
@@ -194,11 +194,17 @@ drops_by_county_summ  = drops_by_county %>%
   mutate(drop_bin = ifelse(!is.na(drop), drop_bins[min(which(drop < drop_bins))], NA), .by = c("row_id"))
 
 example_FIPS = c("42003", "4013", "51680", "8031")
-example_FIPS_tmp = pop %>% rename(pop = value) %>%
+example_FIPS_tmp = FIPS %>%
   filter(location_id %in% example_FIPS) %>%
-  mutate(lab = paste0(county_name, ", ", state_name, "\n(population: ", ifelse(pop/1e6 < 1, paste0(round(pop/1e3, 1), "K)"), paste0(round(pop/1e6, 1), "M)"))))
+  mutate(lab = paste0(county_name, ", ", state_name))
 example_FIPS_labs = example_FIPS_tmp %>% pull(lab)
 names(example_FIPS_labs) = example_FIPS_tmp %>% pull(location_id)
+  
+# example_FIPS_tmp = pop %>% rename(pop = value) %>%
+#   filter(location_id %in% example_FIPS) %>%
+#   mutate(lab = paste0(county_name, ", ", state_name, "\n(population: ", ifelse(pop/1e6 < 1, paste0(round(pop/1e3, 1), "K)"), paste0(round(pop/1e6, 1), "M)"))))
+# example_FIPS_labs = example_FIPS_tmp %>% pull(lab)
+# names(example_FIPS_labs) = example_FIPS_tmp %>% pull(location_id)
 
 # filter to four or more years of data (out of 7)
 p4 = left_join(drops_by_county, pop %>% select(county_name, value, location_id) %>% rename(pop = value) %>% filter(pop > 1e3)) %>%
@@ -206,9 +212,9 @@ p4 = left_join(drops_by_county, pop %>% select(county_name, value, location_id) 
   geom_point(alpha = 0.6) +
   scale_x_log10(name = "population (log scale))", ) +
   scale_y_continuous(expand = c(0,0), limits = c(-1,0),
-                     name = "largest coverage drop") +
+                     name = "largest coverage drop", labels = scales::percent) +
   scale_color_distiller(palette = "YlOrBr", direction = 1, name = "consecutive\nyears dropping") +
-  theme_bw() +
+  theme_bw(base_size = 7) +
   theme(legend.position = c(0.6, 0.15),
         legend.direction = "horizontal", 
         panel.grid = element_blank())
@@ -218,13 +224,13 @@ p5 = ggplot(data = drops_by_county_summ %>% summarize(n = n(), .by = c("nyears_d
             aes(x = nyears_drop, y = drop_bin)) +
   geom_tile(aes(alpha = n), fill = "purple") +
   geom_point(data = drops_by_county %>% filter(location_id %in% example_FIPS),
-             aes(y = drop)) +
+             aes(y = drop), size = 1) +
   geom_text(data = drops_by_county %>% filter(location_id %in% example_FIPS),
-            aes(y = drop, label = paste0("\n", county_name, ", ", state_abbrev)), size = 3) +
+            aes(y = drop, label = paste0("\n", county_name, ", ", state_abbrev)), size = 2) +
   scale_x_continuous(expand = c(0,0), name = "consecutive years dropping", limits = c(0.5, 8)) +
-  scale_y_continuous(expand = c(0,0), limits = c(-1, 0),
+  scale_y_continuous(expand = c(0,0), limits = c(-1, 0), labels = scales::percent,
                      name = "largest coverage drop") +
-  theme_bw() +
+  theme_bw(base_size = 7) +
   theme(legend.position = "non", panel.grid = element_blank())
 
 p6 = vacc %>% filter(location_id %in% c(example_FIPS)) %>% 
@@ -234,12 +240,12 @@ p6 = vacc %>% filter(location_id %in% c(example_FIPS)) %>%
   filter(drop_flag) %>%
   ggplot(aes(x = start_year,  y = value)) + 
   geom_line(data = vacc %>% filter(location_id %in% c(example_FIPS)) %>% 
-              mutate(location_id = factor(location_id, levels = example_FIPS))) + 
-  geom_line(color = "red", size = 1) + 
+              mutate(location_id = factor(location_id, levels = example_FIPS)), size = 0.4) + 
+  geom_line(color = "red", size = 0.6) + 
   facet_wrap(vars(location_id), ncol = 2, labeller = labeller(location_id = example_FIPS_labs)) + 
   scale_x_continuous(name = "school year") +
-  scale_y_continuous(name = "MMR coverage", limits = c(0, 1)) +
-  theme_bw() + 
+  scale_y_continuous(name = "MMR coverage", limits = c(0, 1), labels = scales::percent) +
+  theme_bw(base_size = 7) + 
   theme(panel.grid = element_blank(),
         strip.background = element_blank())
 
@@ -319,4 +325,18 @@ ggplot(data = who_cases %>% filter(country_name %in% example_countries2)) +
         panel.grid = element_blank(), 
         strip.background = element_blank())
 ggsave("R/FINAL/figures/honeymoon_examples.pdf", width = 10, height = 4)
+
+
+### ANOTHER VERSIO
+load("R/FINAL/data/us_dat_fig.rda")
+
+plot_grid(
+  plot_grid(
+  plot_grid(p2, p1, nrow = 1, labels = c("A", "C"), align = "h", axis = "tb", label_size = 10, rel_widths = c(0.55, 0.45)),
+  plot_grid(p6, p5, nrow = 1, labels = c("B", "D"), align = "h", axis = "tb", label_size = 10, rel_widths = c(0.55, 0.45)), 
+  ncol = 1
+),  us_dat_fig, labels = c(NA, "E"), rel_widths = c(0.55, 0.45), label_size = 10)
+
+ggsave("R/FINAL/figures/empirical_vax_declines_v3.pdf", width = 8, height = 4)
+
 
