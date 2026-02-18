@@ -65,12 +65,12 @@ t = \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{S_0 - (1-v)}\Big)
 $$
 
 \noindent
-We can also rewrite this equation to show us the relationship between prior vaccinoation coverage and new vaccination coverage, that will yield equivalent honeymoon periods. When vaccination rates are above the herd immunity threshold, $S_0 = v_0$ the pre-drop vaccination coverage, so 
+We can also rewrite this equation to show us the relationship between prior vaccinoation coverage and new vaccination coverage, that will yield equivalent honeymoon periods. When vaccination rates are above the herd immunity threshold, $S_0 = 1-v_0$ the pre-drop vaccination coverage, so 
 
 \begin{align}
-    t &= \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{v_0 - (1-v)}\Big) \\
-    v_0 &= v - e^{-\mu t} \Big(1/R_0 - (1-v)\Big) \\
-    v_0 &= e^{-\mu t}(1-1/R_0) + (1+e^{-\mu t})v
+    t &= \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big) \\
+    %v_0 &= v - e^{-\mu t} \Big(1/R_0 - (1-v)\Big) \\
+    %v_0 &= e^{-\mu t}(1/R_0-1) + (1-e^{-\mu t})v
 \end{align}
 
 \section{Unity beta and the effect of age structure}
