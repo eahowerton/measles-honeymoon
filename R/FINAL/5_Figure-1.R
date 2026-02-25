@@ -97,6 +97,15 @@ who_drops_by_country_summ  = who_drops_by_country %>%
 
 example_countries = c("Sudan", "Brazil", "Central African Republic", "Samoa", "Australia", "Benin") # "Burkina Faso", 
 
+rt_after_release_full_long = readRDS("R/FINAL/data/rt_after_release_long.rds")
+honeymoon_period = rt_after_release_full_long %>%
+  filter(Rt > 1) %>%
+  mutate(min_time = min(time), .by = c("waifw_id", "start_vax", "release_vax")) %>%
+  filter(time == min_time) %>%
+  select(-min_time)
+
+
+
 # CHECK THESE REGION ASSIGNMENTS...
 p0 = combined %>%
   filter(year > 1980, !is.na(region)) %>%
@@ -118,6 +127,8 @@ p0 = combined %>%
         panel.grid = element_blank())
 p1 = ggplot(data = who_drops_by_country_summ %>% filter(nyears_data > 1) %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin")), 
        aes(x = nyears_drop, y = drop_bin - bin_width/2)) + # subtract bin_width/2 to get midpoint of bin on x-axis
+  geom_line(data = honeymoon_period %>% filter(waifw_id == 5, start_vax == 0.95), 
+            aes(x = time, y = -(1-release_vax)), linewidth = 0.4, linetype = "dotted") +
   geom_tile(aes(alpha = n), fill = "blue") +
   geom_point(data = who_drops_by_country %>% filter(country_name %in% example_countries),
              aes(y = drop), size = 1) +
@@ -222,6 +233,8 @@ p4 = left_join(drops_by_county, pop %>% select(county_name, value, location_id) 
 p5 = ggplot(data = drops_by_county_summ %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin", "nyears_data")) %>%
               filter(nyears_data > 1),
             aes(x = nyears_drop, y = drop_bin)) +
+  geom_line(data = honeymoon_period %>% filter(waifw_id == 5, start_vax == 0.95), 
+            aes(x = time, y = -(1-release_vax)), linewidth = 0.4, linetype = "dotted") +
   geom_tile(aes(alpha = n), fill = "purple") +
   geom_point(data = drops_by_county %>% filter(location_id %in% example_FIPS),
              aes(y = drop), size = 1) +
