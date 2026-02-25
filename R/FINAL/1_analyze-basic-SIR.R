@@ -154,3 +154,7 @@ cowplot::plot_grid(p + theme(legend.position = c(0.15, 0.77)),
                    labels = c("A", "B"), label_size = 8)
 ggsave("R/FINAL/figures/Figure1.pdf", width = 6, height = 3)
 
+### values for text
+return_time %>%
+  filter(v == 0.95, new_v %in% c(0.8, 0.75, 0.25, 0.3))
+

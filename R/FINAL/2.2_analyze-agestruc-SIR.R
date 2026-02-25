@@ -149,3 +149,15 @@ honeymoon_period %>%
         panel.grid.minor = element_blank())
 ggsave("R/FINAL/figures/honeymoon_age_full_comparestart.pdf", width = 9, height = 3)
 
+### values for text
+honeymoon_period %>% 
+  filter(waifw_id == 5, start_vax == 0.95, release_vax %in% c(0.8, 0.9))
+
+### values for text
+honeymoon_period %>% 
+  filter(waifw_id != 1, start_vax == 0.95) %>%
+  left_join(honeymoon_period %>% filter(waifw_id == 1) %>% rename(homog_time = time) %>% select(-waifw_id, -Rt)) %>%
+  filter(time < homog_time) %>%
+  mutate(min_vax = min(release_vax), .by = c("waifw_id")) %>%
+  filter(release_vax == min_vax)
+
