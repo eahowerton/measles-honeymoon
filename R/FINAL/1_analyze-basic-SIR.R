@@ -160,7 +160,6 @@ g = ggplot(broader_return_time %>% mutate(mu_lab = -1/mu), aes(x = new_v, y = v)
   theme(legend.position = "bottom", 
         strip.background = element_blank())#, 
         # strip.placement = "outside")
-g
 
 cowplot::plot_grid(p + theme(legend.position = c(0.15, 0.77)), 
                    g + theme(legend.position = "right"), 
