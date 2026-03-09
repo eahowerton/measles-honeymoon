@@ -126,7 +126,7 @@ honeymoon_period %>%
   ggplot(aes(x = release_vax, y = time, color = as.factor(waifw_id))) +
   geom_line(linewidth = 0.8) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0, 9, 0.3), label = scales::percent, name = "coverage after drop") +
+  scale_x_continuous(breaks = seq(0, 9, 0.3), label = scales::percent, name = "post-decline coverage") +
   scale_y_continuous(name = "time to Re > 1") +
   theme_bw() +
   theme(legend.title = element_blank())
@@ -141,7 +141,7 @@ honeymoon_period %>%
   guides(color = "none") + 
   scale_alpha_manual(name = "coverage before drop", values = c(0.6, 1), labels = c("95%", "96%")) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0, 9, 0.3), label = scales::percent, name = "coverage after drop") +
+  scale_x_continuous(breaks = seq(0, 9, 0.3), label = scales::percent, name = "post-decline coverage") +
   scale_y_continuous(name = "time to Re > 1") +
   theme_bw() +
   theme(strip.background = element_blank(), 

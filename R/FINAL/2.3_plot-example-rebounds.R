@@ -127,12 +127,14 @@ pt0 = lapply(waifw, melt) %>%
   geom_tile() + 
   geom_text(data = max_contacts, aes(label = round(m)), size = 2) +
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
-  scale_fill_distiller(palette = "YlGnBu") + 
+  scale_fill_distiller(palette = "YlGnBu", name = "contacts\n(relative to max)") + 
   scale_x_continuous(expand = c(0,0),
                      breaks = which(round(age_classes,3) %in% round(age_labs,3)), 
                      labels = age_labs,
                      name = "age (years)") +
   scale_y_continuous(expand = c(0,0),
+                     breaks = which(round(age_classes,3) %in% round(age_labs,3)), 
+                     labels = age_labs,
                      name = "age (years)") +
   theme(legend.position = "none", 
         strip.background = element_blank())
@@ -148,7 +150,7 @@ pt1 = release_sim_df_long %>%
   geom_line(linewidth = 0.8) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since coverage decline") + 
   scale_y_continuous(name = "infections") +
   theme_bw() + 
   theme(legend.title = element_blank(), 
@@ -169,7 +171,7 @@ pt2 = unity_beta_long %>%
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   guides(color = FALSE) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since coverage decline") + 
   scale_y_continuous(limits = c(-1, 1)*10, name = "log(unity beta)") +
   theme_bw() +
   theme(legend.title = element_blank(), 
@@ -185,7 +187,7 @@ pt3 = Rt_long %>%
   geom_line(linewidth = 0.8) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since coverage decline") + 
   scale_y_continuous(name = "Re") +
   theme_bw() +
   theme(legend.title = element_blank(), 
@@ -198,15 +200,16 @@ pt4 = release_sim_df_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>% 
   dcast(time + age + waifw_id ~ variable, value.var = "value") %>%
   ggplot(aes(x = time, y = age)) + 
-  geom_tile(aes(fill = S)) + 
+  geom_tile(aes(fill = S/paras["N"])) + 
   geom_point(data = release_sim_df_long %>% filter(time %in% seq(0, 10, 0.1), variable == "I", age <= 10) %>%
                mutate(bin_width = bin_width[as.factor(age)],
                       I = ifelse(value < 1, NA, value/bin_width)),
              aes(size = I), color = "white") +
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
-  scale_fill_viridis_c(option = "inferno") + 
+  guides(size = FALSE) + 
+  scale_fill_viridis_c(option = "inferno", name = "% susceptible") + 
   scale_size_continuous(range = c(0,2)) + 
-  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "years since release") + 
+  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "years since coverage decline") + 
   scale_y_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "age (year)") + 
   theme(legend.position = "none",
         panel.grid.minor = element_blank(), 
@@ -270,6 +273,16 @@ ggsave("R/FINAL/figures/mean_age.pdf", width = 5, height = 4)
 #### RELEASE VACCINATION WITH EACH WAIFW + SEASONALITY -----------------------
 release_vax = 0.2
 chosen_dt = 1/52
+
+vax_equilib_long = expand.grid(age = age_classes, 
+                               start_vax = start_vax, 
+                               variable = c("S", "I", "R"), 
+                               waifw_id = 1:5) %>%
+  left_join(data.frame(age = age_classes, 
+                       bin_width = bin_width, 
+                       N = stable_age*paras["N"])) %>%
+  mutate(value = ifelse(variable == "S", N*(1-start_vax), ifelse(variable == "I", 0, N*start_vax)))
+
 # show equilibrium values for different vax rates and waifw matrices
 release_sim_df_seas = vector("list", length(waifw))
 # IC_release = vector("list", length(waifw))
