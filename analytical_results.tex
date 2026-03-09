@@ -69,8 +69,12 @@ We can also rewrite this equation to show us the relationship between prior vacc
 
 \begin{align}
     t &= \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big) \\
-    %v_0 &= v - e^{-\mu t} \Big(1/R_0 - (1-v)\Big) \\
-    %v_0 &= e^{-\mu t}(1/R_0-1) + (1-e^{-\mu t})v
+    - t \mu &= \log \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big) \\
+    e^{- t \mu} &= \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big) \\
+    (1-v_0) - (1-v) &= e^{t \mu} (1/R_0 - (1-v)) \\
+    v - v_0 &= e^{t \mu} (v - 1 + 1/R_0) \\
+    v_0 &= v - e^{t \mu} (v - 1 + 1/R_0) \\
+    v_0 &= v(1 - e^{t \mu}) + e^{t \mu} (1 - 1/R_0)
 \end{align}
 
 \section{Unity beta and the effect of age structure}
