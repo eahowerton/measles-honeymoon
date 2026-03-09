@@ -93,10 +93,10 @@ ggsave("R/FINAL/figures/honeymoon_SIR_sub.pdf", p_inset, width = 4, height = 4.5
 p = return_time %>%
   ggplot(aes(x = new_v, y = time_to_cross, color = as.factor(v))) + 
   geom_path(size = 1) +
-  scale_color_manual(values = RColorBrewer::brewer.pal(5, "Greys")[2:4], name = "coverage\nbefore drop", 
+  scale_color_manual(values = RColorBrewer::brewer.pal(5, "Greys")[2:4], name = "pre-decline\ncoverage", 
                      labels = paste0(pre_v*100, "%")) +
   scale_x_continuous(breaks = seq(0, 9, 0.3), expand = c(0,0),
-                     label = scales::percent, name = "coverage after drop") + 
+                     label = scales::percent, name = "post-decline coverage") + 
   scale_y_continuous(name = "time to Re > 1") + 
   theme_bw(base_size = 7) + 
   theme(legend.position = "bottom")
@@ -131,21 +131,36 @@ broader_return_time = expand.grid(mu = c(1/50, 1/80),
                          (mu + gamma)/beta0)) %>%
   mutate(time_to_cross = -1/mu * log(((1/R0) - (1-new_v))/(S_star - (1-new_v))))
 
-g = ggplot(broader_return_time, aes(x = new_v, y = v)) + 
+# overlay manual calculations to double check math
+# contours_manual = expand.grid(
+#   new_v = seq(0, 0.9, 0.01),
+#   mu = 1/50,
+#   R0 = 17,
+#   honeymoon_time = c(1,5,10,15)
+# ) %>%
+#   mutate(S_star = 1/R0,
+#          line = exp(honeymoon_time*mu)*(1 - S_star) + (1-exp(mu*honeymoon_time))*new_v)
+
+mu_labs = paste0("'birth rate' == 1/", c(80, 50), "~(years^-1)")
+names(mu_labs) = c(-80,-50)
+
+g = ggplot(broader_return_time %>% mutate(mu_lab = -1/mu), aes(x = new_v, y = v)) + 
   geom_tile(aes(fill = time_to_cross)) + 
   geom_contour(aes(z = time_to_cross), color = "black", breaks = c(1, 5, 10, 15), linewidth = 0.25) + 
   metR::geom_text_contour(aes(z = time_to_cross), stroke = 0.15, breaks = c(1, 5, 10, 15), size = 2) +
-  facet_wrap(vars(-1/mu), ncol = 1, labeller = label_both) +#, switch = "y") + 
+  # geom_line(data = contours_manual, aes(x = new_v, y = line, group = honeymoon_time), linetype = 'dashed', color = "red") +
+  facet_wrap(vars(mu_lab), ncol = 1, labeller = as_labeller(mu_labs, default = label_parsed)) +#, switch = "y") + 
   scale_fill_distiller(palette = "Blues", direction = 0, name = "time to\nRe > 1") +
   scale_linetype_manual(values = c("longdash", "solid", "dotted")) +
   scale_x_continuous(expand = c(0,0), breaks = seq(0, 0.9, 0.3), label = scales::percent, 
-                     name = "coverage after drop") + 
+                     name = "post-decline coverage") + 
   scale_y_continuous(expand = c(0,0), label = scales::percent, 
-                     name = "coverage before drop") + 
+                     name = "pre-decline coverage") + 
   theme_bw(base_size = 7) + 
   theme(legend.position = "bottom", 
         strip.background = element_blank())#, 
         # strip.placement = "outside")
+g
 
 cowplot::plot_grid(p + theme(legend.position = c(0.15, 0.77)), 
                    g + theme(legend.position = "right"), 
@@ -157,4 +172,7 @@ ggsave("R/FINAL/figures/Figure1.pdf", width = 6, height = 3)
 ### values for text
 return_time %>%
   filter(v == 0.95, new_v %in% c(0.8, 0.75, 0.25, 0.3))
+
+return_time %>%
+  filter(new_v == 0)
 
