@@ -226,8 +226,8 @@ plt_df %>%
 
 us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)))) + 
   geom_tile(data = plot_honeymoon, aes(x = log(mu), y = release_vax, fill = time)) +
-  geom_contour(data = plot_honeymoon, aes(x = log(mu), y = release_vax, z = time),
-               color = "black", breaks = c(1, 3, 5, 7), linewidth = 0.2) +
+  # geom_contour(data = plot_honeymoon, aes(x = log(mu), y = release_vax, z = time),
+  #              color = "black", breaks = c(1, 3, 5, 7), linewidth = 0.2) +
   # metR::geom_text_contour(data = plot_honeymoon,
   #                          aes(x = log(mu), y = release_vax, z = time),
   #                          breaks = c(1, 3, 5, 7), size = 3) +
@@ -248,8 +248,7 @@ us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymo
                        labels = c(1, 10, 100),
                        #trans = scales::pseudo_log_trans(sigma = 0.001), 
                        na.value = "darkgray", name = "cases per\n10,000") +
-  scale_fill_distiller(palette = "Greys", direction = -1, na.value = "white", 
-                       name = "time to\nRe > 1") + 
+  scale_fill_viridis_c(option = "rocket", na.value = "#FAEBDDFF", name = "time to\nRe > 1") +
   scale_size_continuous(range = c(0,3)) +
   scale_x_continuous(expand = c(0,0),
                      breaks = c(log(c(50, 100, 200)/1e4)), 
@@ -270,4 +269,45 @@ births %>%
   mutate(state = substr(county_name, nchar(county_name)-1, nchar(county_name))) %>%
   filter(year == "2016") %>%
   summarize(n = n(), .by = c("state"))
+
+top_10_pct = plt_df %>% filter(total_cases_per_pop > 0, log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>% 
+  filter(total_cases_per_pop > quantile(total_cases_per_pop, 0.9)) 
+
+top_10_pct %>% 
+  mutate(min_tcpp = min(total_cases_per_pop), 
+         max_tcpp = max(total_cases_per_pop)) %>%
+  filter(total_cases_per_pop == max_tcpp)
+
+mean_birth_rate = plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>% mutate(birth_rate = exp(log_mean_birth_rate)) %>% 
+  pull(birth_rate) %>% mean()
+
+mean_vax_cov = plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>%
+  pull(mean_vax) %>% mean()
+
+top_10_pct %>%
+  mutate(above_mean_birth = exp(log_mean_birth_rate) > mean_birth_rate, 
+         below_mean_vax = mean_vax < mean_vax_cov) %>%
+  summarize(n = n(), pct = n()/nrow(top_10_pct), .by = c("above_mean_birth", "below_mean_vax"))
+  
+top_10_pct %>%
+  mutate(above_mean_birth = exp(log_mean_birth_rate) > mean_birth_rate, 
+         below_mean_vax = mean_vax < mean_vax_cov) %>% filter(!above_mean_birth, !below_mean_vax)
+
+# counties with at least one case and vax cov > 0.95
+plt_df %>% filter(total_cases_per_pop > 0, log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>%
+  mutate(tot = n()) %>%
+  filter(mean_vax > 0.95, total_cases > 0) %>%
+  summarize(n = n(), tot = mean(tot), pct = n()/mean(tot))
+
+# counties with vax < 0.95
+plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>%
+  mutate(vax_cat = ifelse(mean_vax < 0.90, "below 90%", ifelse(mean_vax > 0.95, "above 95%", "90%-95%"))) %>%
+  summarize(n = n(), .by = "vax_cat") %>%
+  mutate(pct = n/sum(n))
+
+# counties with no cases and vax cov < 0.95
+plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax), mean_vax < 0.9) %>%
+  mutate(tot = n()) %>%
+  filter(total_cases != 0) %>%
+  summarize(n = n(), tot = mean(tot), pct = n()/mean(tot))
 

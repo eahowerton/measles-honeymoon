@@ -134,20 +134,22 @@ p1 = ggplot(data = who_drops_by_country_summ %>% filter(nyears_data > 1) %>% sum
              aes(y = drop), size = 1) +
   geom_text(data = who_drops_by_country %>% filter(country_name %in% example_countries),
             aes(y = drop, label = paste0("\n", country_name)), size = 2) +
+  scale_alpha_continuous(breaks = seq(2, 12, 2), name = "# countries") +
   scale_x_continuous(expand = c(0,0), name = "consecutive years dropping",
                       breaks = seq(0, 8, 2)) +
   scale_y_continuous(expand = c(0,0), labels = scales::percent,
                      name = "largest coverage drop", limits = c(-1, 0)) +
   theme_bw(base_size = 7) +
-  theme(legend.position = "none", 
+  theme(legend.position = c(0.8, 0.2), 
+        legend.key.size = unit(0.25, "cm"),
         panel.grid = element_blank())
 p2 = combined %>% filter(country_name %in% example_countries, year > 1980) %>% 
   left_join(who_drops_by_country) %>% 
   mutate(drop_flag = ifelse(year >= start_yr & year <= start_yr + nyears_drop, TRUE, FALSE)) %>%
-  filter(drop_flag) %>%
+  filter(drop_flag, year > 2000) %>%
   ggplot(aes(x = year, y = coverage)) + 
-  geom_vline(xintercept = start_yr, linetype = "dotted", size = 0.4) + 
-  geom_line(data = combined %>% filter(country_name %in% example_countries, year > 1980), size = 0.4) +
+  # geom_vline(xintercept = start_yr, linetype = "dotted", size = 0.4) + 
+  geom_line(data = combined %>% filter(country_name %in% example_countries, year > start_yr), size = 0.4) +
   geom_line(color = "red", size = 0.6) +
   facet_wrap(vars(country_name), ncol = 2) + 
   scale_y_continuous(name = "MCV1 coverage", labels = scales::percent) + 
@@ -240,11 +242,14 @@ p5 = ggplot(data = drops_by_county_summ %>% summarize(n = n(), .by = c("nyears_d
              aes(y = drop), size = 1) +
   geom_text(data = drops_by_county %>% filter(location_id %in% example_FIPS),
             aes(y = drop, label = paste0("\n", county_name, ", ", state_abbrev)), size = 2) +
+  scale_alpha_continuous(name = "# countries") +
   scale_x_continuous(expand = c(0,0), name = "consecutive years dropping", limits = c(0.5, 8)) +
   scale_y_continuous(expand = c(0,0), limits = c(-1, 0), labels = scales::percent,
                      name = "largest coverage drop") +
   theme_bw(base_size = 7) +
-  theme(legend.position = "non", panel.grid = element_blank())
+  theme(legend.position = c(0.8, 0.2), 
+        legend.key.size = unit(0.25, "cm"),
+        panel.grid = element_blank())
 
 p6 = vacc %>% filter(location_id %in% c(example_FIPS)) %>% 
   mutate(location_id = factor(location_id, levels = example_FIPS)) %>%
@@ -340,7 +345,7 @@ ggplot(data = who_cases %>% filter(country_name %in% example_countries2)) +
 ggsave("R/FINAL/figures/honeymoon_examples.pdf", width = 10, height = 4)
 
 
-### ANOTHER VERSIO
+### ANOTHER VERSION
 load("R/FINAL/data/us_dat_fig.rda")
 
 plot_grid(
@@ -353,3 +358,36 @@ plot_grid(
 ggsave("R/FINAL/figures/empirical_vax_declines_v3.pdf", width = 8, height = 4)
 
 
+
+### for text
+# small drops
+who_drops_by_country_summ %>% filter(nyears_data > 1) %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin")) %>%
+  filter(!is.na(nyears_drop)) %>%
+  mutate(tot = sum(n)) %>%
+  filter(drop_bin > -0.06) %>%
+  summarize(pct = sum(n)/mean(tot))
+
+drops_by_county_summ %>% filter(nyears_data > 1) %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin")) %>%
+  filter(!is.na(nyears_drop)) %>%
+  mutate(tot = sum(n)) %>%
+  filter(drop_bin > -0.06) %>%
+  summarize(pct = sum(n)/mean(tot))
+
+
+# below honeymoon curve
+honeymoon_curve_approx = approxfun(honeymoon_period %>% filter(waifw_id == 5, start_vax == 0.95) %>% pull(release_vax), 
+                                honeymoon_period %>% filter(waifw_id == 5, start_vax == 0.95) %>% pull(time))
+
+who_drops_by_country_summ %>% filter(nyears_data > 1) %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin")) %>%
+  filter(!is.na(nyears_drop)) %>%
+  mutate(tot = sum(n)) %>%
+  mutate(below_honeymoon = honeymoon_curve_approx(1+drop_bin) < nyears_drop, .by = c("drop_bin")) %>%
+  filter(below_honeymoon) %>%
+  summarize(n = sum(n), tot = mean(tot), pct = sum(n)/mean(tot))
+
+drops_by_county_summ %>% filter(nyears_data > 1) %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin")) %>%
+  filter(!is.na(nyears_drop)) %>%
+  mutate(tot = sum(n)) %>%
+  mutate(below_honeymoon = honeymoon_curve_approx(1+drop_bin) < nyears_drop, .by = c("drop_bin")) %>%
+  filter(below_honeymoon) %>%
+  summarize(n = sum(n), tot = mean(tot), pct = sum(n)/mean(tot))
