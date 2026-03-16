@@ -160,8 +160,8 @@ pt1 = release_sim_df_long %>%
 pt2 = unity_beta_long %>%
   filter(variable == "BH") %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
-  ggplot(aes(x = time, y = log(unity_beta), color = as.factor(waifw_id))) + 
-  geom_text(data = data.frame(y = c(Inf, -Inf), x = c(10, 10), vjust = c(1, 0),
+  ggplot(aes(x = time, y = unity_beta, color = as.factor(waifw_id))) + 
+  geom_text(data = data.frame(y = c(1e3, 1/1e3), x = c(10, 10), vjust = c(1, 0),
                               waifw_id = 1,
                               lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
             aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
@@ -172,7 +172,8 @@ pt2 = unity_beta_long %>%
   guides(color = FALSE) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since coverage decline") + 
-  scale_y_continuous(limits = c(-1, 1)*10, name = "log(unity beta)") +
+  scale_y_log10(limits = c(-1, 1)*1e3, breaks = c(1/rev(c(10, 1e2, 1e3)), c(1, 10, 1e2, 1e3)), 
+                labels = c("1/1,000", "1/100", "1/10", "1", "10", "100", "1,000"), name = "unity beta") +
   theme_bw() +
   theme(legend.title = element_blank(), 
         legend.position = "none",
@@ -218,6 +219,12 @@ pt4 = release_sim_df_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
 cowplot::plot_grid(pt0, pt3, pt1, pt4, pt2, ncol = 1, labels = LETTERS[1:5], align = "v", axis = "lr")
 
 ggsave("R/FINAL/figures/release_examples_age.pdf", width = 8, height = 10)
+
+# get values for text
+# max unity beta in first period (not reliable for peak at age 10)
+unity_beta_long %>% 
+  filter(time < 3) %>% 
+  summarize(m = max(unity_beta, na.rm = TRUE), .by = waifw_id)
 
 # show different beta hat values
 unity_beta_long %>%
