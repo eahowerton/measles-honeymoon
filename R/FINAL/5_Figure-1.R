@@ -48,44 +48,22 @@ get_max_drop = function(vacc, data_start_yr, data_end_yr = 2024){
 
 #### COVERAGE DROPS IN WHO DATA  -----------------------------------------------
 folder = "data/WHO-data/"
-who_births = read.csv(paste0(folder, "BirthRatePer1000downloadDec2024.csv")) %>%
-  melt(c("Series.Name", "Series.Code", "Country.Name", "Country.Code"), variable.name = "year", value.name = "birth_rate") %>%
-  mutate(year = as.integer(substr(year, 2, 5)))
+
+start_yr = 2000
+
 who_vacc = read.csv(paste0(folder, "measlesVaccCoverFirstDose.csv")) %>%
   filter(COVERAGE_CATEGORY == "WUENIC") %>%
   rename(year = YEAR, coverage = COVERAGE) %>% 
-  mutate(year = as.integer(year))
-who_pop = read.csv(paste0(folder, "PopdownloadDec2024.csv")) %>%
-  melt(c("X"), variable.name = "year", value.name = "pop") %>%
-  mutate(year = as.integer(substr(year, 2, 5)))
-who_regions = read.csv(paste0(folder, "map.countries.regions.csv"))
+  mutate(year = as.integer(year)) %>%
+  rename(country_name = NAME) %>% 
+  select(country_name, year, coverage) %>% 
+  mutate(coverage = coverage/100)
 
-combined = full_join(
-  who_births %>% filter(Series.Code == "SP.DYN.CBRT.IN") %>% rename(country_name = Country.Name) %>% select(country_name, year, birth_rate) %>% mutate(birth_rate = as.double(birth_rate)), 
-  who_vacc %>% rename(country_name = NAME) %>% select(country_name, year, coverage) %>% mutate(coverage = coverage/100)) %>% 
-  full_join(
-    who_pop %>% rename(country_name = X) %>% mutate(pop = as.double(pop))
-  ) %>% 
-  full_join(who_regions %>% rename(country_name = `Country...Region`) %>% melt(c("country_name"), variable.name = "region") %>% filter(!is.na(value)) %>% select(-value) %>% mutate(region = gsub(".region", "", region)))
+# exclude 3 countries where vax data started after 2000
+who_vacc_sub = who_vacc %>% 
+  filter(year >= start_yr, !(country_name %in% c("South Sudan", "Montenegro", "Timor-Leste")))
 
-# interpolate coverage where necessary
-interp_vals = function(vals, yright = 1, yleft = 1){
-  if(all(is.na(vals))){return(rep(NA, length(vals)))}
-  x = 1:length(vals)
-  which_notna = which(!is.na(vals))
-  return(approx(x[which_notna], vals[which_notna], x, yright = yright, yleft = yleft)$y)
-}
-
-combined = combined %>%
-  mutate(interp_coverage = interp_vals(coverage), 
-         interp_births = interp_vals(birth_rate, yleft = mean(birth_rate, na.rm = TRUE), yright = mean(birth_rate, na.rm = TRUE)),
-         .by = c("country_name")) %>%
-  # remove values > 1
-  mutate(interp_coverage = ifelse(interp_coverage > 1, 1, interp_coverage))
-
-start_yr = 2000
-who_drops_by_country = combined %>% 
-  filter(year >= start_yr) %>%
+who_drops_by_country = who_vacc_sub %>% 
   arrange(country_name, year) %>%
   dplyr::reframe(get_max_drop(coverage, start_yr), .by = c("country_name"))
 
@@ -95,7 +73,7 @@ who_drops_by_country_summ  = who_drops_by_country %>%
   mutate(row_id = seq_len(n())) %>%
   mutate(drop_bin = ifelse(!is.na(drop), drop_bins[min(which(drop < drop_bins))], NA), .by = c("row_id"))
 
-example_countries = c("Sudan", "Brazil", "Central African Republic", "Samoa", "Australia", "Benin") # "Burkina Faso", 
+example_countries = c("Sudan", "Brazil", "Central African Republic", "Samoa", "Australia", "Benin")
 
 rt_after_release_full_long = readRDS("R/FINAL/data/rt_after_release_long.rds")
 honeymoon_period = rt_after_release_full_long %>%
@@ -104,27 +82,7 @@ honeymoon_period = rt_after_release_full_long %>%
   filter(time == min_time) %>%
   select(-min_time)
 
-
-
-# CHECK THESE REGION ASSIGNMENTS...
-p0 = combined %>%
-  filter(year > 1980, !is.na(region)) %>%
-  reframe(quantile = paste0("Q", c(25, 50, 75)), 
-            value = quantile(coverage, c(0.25, 0.5, 0.75), na.rm = TRUE), .by = c("year", "region")) %>%
-  dcast(region + year ~ quantile, value.var = "value") %>% 
-  ggplot(aes(x = year)) + 
-  geom_ribbon(aes(ymin = Q25, ymax = Q75, fill = region), alpha = 0.2) + 
-  geom_line(aes(y = Q50, color = region)) + 
-  labs(y = "MCV1 coverage") +
-  guides(color = guide_legend(ncol = 2), fill = guide_legend(ncol = 2)) + 
-  scale_color_manual(values = RColorBrewer::brewer.pal(8, "Accent")[5:8],
-                     labels = c("AFRO", "AMRO", "WPRO", "SEARO")) + 
-  scale_fill_manual(values = RColorBrewer::brewer.pal(8, "Accent")[5:8],
-                    labels = c("AFRO", "AMRO", "WPRO", "SEARO")) + 
-  theme_bw(base_size = 7) + 
-  theme(legend.position = c(0.65, 0.2), 
-        legend.direction = "horizontal",
-        panel.grid = element_blank())
+# plot WHO drops by country
 p1 = ggplot(data = who_drops_by_country_summ %>% filter(nyears_data > 1) %>% summarize(n = n(), .by = c("nyears_drop", "drop_bin")), 
        aes(x = nyears_drop, y = drop_bin - bin_width/2)) + # subtract bin_width/2 to get midpoint of bin on x-axis
   geom_line(data = honeymoon_period %>% filter(waifw_id == 5, start_vax == 0.95), 
@@ -143,12 +101,13 @@ p1 = ggplot(data = who_drops_by_country_summ %>% filter(nyears_data > 1) %>% sum
   theme(legend.position = c(0.8, 0.2), 
         legend.key.size = unit(0.25, "cm"),
         panel.grid = element_blank())
-p2 = combined %>% filter(country_name %in% example_countries, year > 1980) %>% 
+
+# plot example coverage trajectories
+p2 = who_vacc_sub %>% filter(country_name %in% example_countries, year > 1980) %>% 
   left_join(who_drops_by_country) %>% 
   mutate(drop_flag = ifelse(year >= start_yr & year <= start_yr + nyears_drop, TRUE, FALSE)) %>%
   filter(drop_flag, year > 2000) %>%
   ggplot(aes(x = year, y = coverage)) + 
-  # geom_vline(xintercept = start_yr, linetype = "dotted", size = 0.4) + 
   geom_line(data = combined %>% filter(country_name %in% example_countries, year > start_yr), size = 0.4) +
   geom_line(color = "red", size = 0.6) +
   facet_wrap(vars(country_name), ncol = 2) + 
@@ -156,12 +115,8 @@ p2 = combined %>% filter(country_name %in% example_countries, year > 1980) %>%
   theme_bw(base_size = 7) + 
   theme(panel.grid = element_blank(), 
         strip.background = element_blank())
-p_who = plot_grid(p0, p1, p2, nrow = 1, labels = c("A", "B", "C"))
 
-# finally plot the increases globally
-
-
- #### COVERAGE DROPS IS US DATA -------------------------------------------------
+#### COVERAGE DROPS IS US DATA -------------------------------------------------
 # US census county pop estimates 2020-2024 https://www.census.gov/data/tables/time-series/demo/popest/2020s-counties-total.html
 # FIPS: https://data.transportation.gov/Railroads/State-County-and-City-FIPS-Reference-Table/eek5-pv8d/about_data
 
