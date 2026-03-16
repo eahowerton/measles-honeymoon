@@ -48,17 +48,17 @@ for(j in 1:length(tst_mu)){
   scalars_tmp = data.frame(waifw_id = 5, scalar = NA, diff = NA)
   i = 5
   # for(i in 5:length(waifw)){
-    o = optimize(f = find_scalar, tol = 1e-8, interval = c(0, 100), R0 = R0,
-                 waifw = waifw[[5]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"],  mu = tmp_mu, N = 1)
-    print(get_Rt(waifw[[5]], stable_age, paras["beta0"]*o$minimum, paras["gamma"],  mu = tmp_mu, N = 1))
-    scalars_tmp[1, 2:3] = c(o$minimum, o$objective)
-    # scalars_tmp[i, 2:3] = c(o$minimum, o$objective)
+  o = optimize(f = find_scalar, tol = 1e-8, interval = c(0, 100), R0 = R0,
+               waifw = waifw[[5]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"],  mu = tmp_mu, N = 1)
+  print(get_Rt(waifw[[5]], stable_age, paras["beta0"]*o$minimum, paras["gamma"],  mu = tmp_mu, N = 1))
+  scalars_tmp[1, 2:3] = c(o$minimum, o$objective)
+  # scalars_tmp[i, 2:3] = c(o$minimum, o$objective)
   # }
   scalars_all[[j]]  = scalars_tmp
   # pre-vax equilibrium = (1-vax_cov)*N(a) where N(a) is stable age distribution
   vax_equilib_long[[j]] = expand.grid(age = age_classes, 
-                                 start_vax = start_vax, 
-                                 variable = c("S", "I", "R")) %>%
+                                      start_vax = start_vax, 
+                                      variable = c("S", "I", "R")) %>%
     left_join(data.frame(age = age_classes, 
                          bin_width = bin_width, 
                          N = stable_age*paras["N"])) %>%
@@ -155,7 +155,7 @@ upstate_sc = data.frame(county_name = c("Spartanburg", "Greenville", "Anderson",
                         location_id = c(45083, 45045, 45007, 45021)) %>%
   mutate(location_name = paste0(county_name, ", ", state_name))
 
-  # now add to measles cases
+# now add to measles cases
 measles_cases = measles_cases %>% 
   filter(location_name != "Upstate, South Carolina") %>%
   bind_rows(upstate_sc)
@@ -195,19 +195,19 @@ plt_df = measles_cases %>%
   # some corrections for merging 
   mutate(location_name = ifelse(state_name == "District of Columbia", "District of Columbia, District of Columbia", location_name)) %>%
   mutate(location_id = ifelse(state_name == "District of Columbia", 11001, 
-                       ifelse(location_name == "St. Johns, Florida", 12109, 
-                       ifelse(location_name == "McLennan, Texas", 48309, location_id)))) %>%
+                              ifelse(location_name == "St. Johns, Florida", 12109, 
+                                     ifelse(location_name == "McLennan, Texas", 48309, location_id)))) %>%
   full_join(
     birth_pop %>% 
       mutate(location_id = as.integer(location_id), 
-      location_name = paste0(county_name, ", ", state_name)) %>%
+             location_name = paste0(county_name, ", ", state_name)) %>%
       select(location_id, location_name, state_name, total_pop, births, birth_rate)
   ) %>%
   full_join(measles_vax %>% select(location_id, mean_vax)) %>%
   mutate(total_cases = ifelse(is.na(total_cases), 0, total_cases), 
          total_cases_per_pop = total_cases/total_pop) %>%
   mutate(log_mean_birth_rate = log(births/total_pop))# %>%
-  #filter(!is.na(location_id))
+#filter(!is.na(location_id))
 
 # now address states where cases were reported regionally rather than by county, so we cannot disaggregate
 # when we can find the counties that belong to a given health region, we use a population-weighted average
@@ -215,19 +215,19 @@ plt_df = measles_cases %>%
 
 # utah - map from https://files.epi.utah.gov/Utah%20measles%20dashboard.html then converted using UT county map
 utah_conversion = data.frame(data_name = paste0(c(rep("Southwest Health District", 5), 
-                                  rep("Southeast Health District", 3), 
-                                  rep("Central", 6), 
-                                  #rep("TriCounty", 3),  exclude because no cases reported in this region
-                                  rep("Bear River", 3), 
-                                  rep("Weber-Morgan", 2)
-                                  ), ", Utah"),
-                    county_name = paste0(c("Beaver", "Iron", "Garfield", "Kane", "Washington", 
-                                    "Grand", "Emery", "Carbon", 
-                                    "Juab", "Millard", "Sanpete", "Sevier", "Piute", "Wayne", 
-                                    #"Daggett", "Uintah", "Duchesne", 
-                                    "Box Elder", "Cache", "Rich", 
-                                    "Weber", "Morgan"
-                                    ), ", Utah"))
+                                                  rep("Southeast Health District", 3), 
+                                                  rep("Central", 6), 
+                                                  #rep("TriCounty", 3),  exclude because no cases reported in this region
+                                                  rep("Bear River", 3), 
+                                                  rep("Weber-Morgan", 2)
+), ", Utah"),
+county_name = paste0(c("Beaver", "Iron", "Garfield", "Kane", "Washington", 
+                       "Grand", "Emery", "Carbon", 
+                       "Juab", "Millard", "Sanpete", "Sevier", "Piute", "Wayne", 
+                       #"Daggett", "Uintah", "Duchesne", 
+                       "Box Elder", "Cache", "Rich", 
+                       "Weber", "Morgan"
+), ", Utah"))
 
 
 louisiana_conversion = data.frame(
@@ -243,24 +243,24 @@ NYC_conversion = data.frame(
 
 tennessee_conversion = data.frame(
   county_name = paste0(c("Cheatham", "Dickson", "Houston", "Humphreys", "Montgomery","Robertson", "Rutherford", "Stewart", "Sumner", "Trousdale", "Williamson", "Wilson", 
-  "Davidson", 
-  "Cannon", "Clay", "Cumberland", "DeKalb", "Fentress", "Jackson", "Macon", "Overton", "Pickett", "Putnam", "Smith", "Van Buren", "Warren"), ", Tennessee"),
+                         "Davidson", 
+                         "Cannon", "Clay", "Cumberland", "DeKalb", "Fentress", "Jackson", "Macon", "Overton", "Pickett", "Putnam", "Smith", "Van Buren", "Warren"), ", Tennessee"),
   data_name = paste0(c(rep("Mid-Cumberland Region", 12), "Nashville-Davidson County Region", rep("Upper Cumberland Region", 13)), ", Tennessee")
 )
 
 virginia_conversion = read.csv("data/US-data/virginia_locality_hd.csv") %>%
   rename(county_name = Locality, 
-  location_id = CountyFIPS, 
-  data_name = HPR) %>%
+         location_id = CountyFIPS, 
+         data_name = HPR) %>%
   mutate(county_name = paste0(county_name, ", Virginia"), 
          data_name = paste0(data_name, ", Virginia")) %>%
   select(county_name, data_name)
 
 conversion_all = bind_rows(utah_conversion,
-                       louisiana_conversion, 
-                       NYC_conversion, 
-                       tennessee_conversion, 
-                       virginia_conversion)
+                           louisiana_conversion, 
+                           NYC_conversion, 
+                           tennessee_conversion, 
+                           virginia_conversion)
 
 conversion_rates = plt_df %>% filter(location_name %in% conversion_all$county_name) %>%
   left_join(conversion_all, by = c("location_name" = "county_name")) %>%
@@ -270,20 +270,18 @@ conversion_rates = plt_df %>% filter(location_name %in% conversion_all$county_na
             .by = "data_name") %>%
   rename(location_name = data_name) %>%
   left_join(measles_cases %>%
-  summarize(total_cases = sum(count), .by = c("location_id", "location_name", "state_name"))) %>%
+              summarize(total_cases = sum(count), .by = c("location_id", "location_name", "state_name"))) %>%
   mutate(log_mean_birth_rate = log(births/total_pop), 
-  total_cases_per_pop = total_cases/total_pop)
+         total_cases_per_pop = total_cases/total_pop)
 
 plt_df = plt_df %>% 
-filter(!(location_name %in% conversion_all$county_name), 
-!(location_name %in% conversion_rates$location_name)) %>%
+  filter(!(location_name %in% conversion_all$county_name), 
+         !(location_name %in% conversion_rates$location_name)) %>%
   bind_rows(conversion_rates)
 
 
 
 #### PLOT --------------------------------------------------------------------------
-
-
 plot_honeymoon = expand.grid(mu = exp(tst_mu), 
                              release_vax = release_vax_full) %>%
   left_join(honeymoon_period %>% select(mu, release_vax, time))
@@ -314,11 +312,13 @@ us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymo
                            segment.size = 0.4,
                            segment.color = 'black', size = 2
   ) +
+  # geom_vline(xintercept = log(mean_birth_rate)) +
+  # geom_hline(yintercept = mean_vax_cov) +
   guides(size = "none") +
   scale_color_viridis_c(breaks = log(c(1, 10, 100)), #c(-2, 0, 2, 4, 6), 
-                       labels = c(1, 10, 100),
-                       #trans = scales::pseudo_log_trans(sigma = 0.001), 
-                       na.value = "darkgray", name = "cases per\n10,000") +
+                        labels = c(1, 10, 100),
+                        #trans = scales::pseudo_log_trans(sigma = 0.001), 
+                        na.value = "darkgray", name = "cases per\n10,000") +
   scale_fill_viridis_c(option = "rocket", na.value = "#FAEBDDFF", name = "time to\nRe > 1") +
   scale_size_continuous(range = c(0,3)) +
   scale_x_continuous(expand = c(0,0),
@@ -329,7 +329,7 @@ us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymo
                      labels = scales::percent) +
   theme_bw(base_size = 7) + 
   theme(legend.key.width = unit(0.5, "cm"),
-    legend.position = "bottom")
+        legend.position = "bottom")
 
 save("us_dat_fig",
      file="R/FINAL/data/us_dat_fig.rda")
@@ -340,8 +340,8 @@ n_counties_births <- birth_pop %>%
 
 n_counties_vax <- measles_vax %>%
   mutate(state_name = ifelse(state_name == "DC",
-    "District of Columbia",
-    state.name[match(state_name, state.abb)])) %>%
+                             "District of Columbia",
+                             state.name[match(state_name, state.abb)])) %>%
   summarize(n_counties_vax = n_distinct(county_name), .by = "state_name")
 
 n_counties_cases <- measles_cases %>%
@@ -351,9 +351,9 @@ total_cases <- measles_cases %>%
   summarize(total_cases = sum(count), .by = "state_name")
 
 total_cases_excluded <- plt_df %>% 
-filter(is.na(mean_vax) | 
-       log_mean_birth_rate < log(min(plot_honeymoon$mu))) %>%
-       summarize(total_cases_excluded  = sum(total_cases), .by = "state_name")
+  filter(is.na(mean_vax) | 
+           log_mean_birth_rate < log(min(plot_honeymoon$mu))) %>%
+  summarize(total_cases_excluded  = sum(total_cases), .by = "state_name")
 
 # Merge the three summaries by state_name for comparison
 county_counts_compare <- n_counties_births %>%
@@ -369,10 +369,10 @@ county_counts_compare <- n_counties_births %>%
 states_no_vax = county_counts_compare %>% filter(is.na(n_counties_vax)) %>% pull(state_name)
 
 # plt_df %>% filter(state_name %in% states_no_vax) %>%
-  # summarize(total_cases = sum(total_cases), .by = "state_name") %>%
-  # View()
+# summarize(total_cases = sum(total_cases), .by = "state_name") %>%
+# View()
 
-  # keep notes on states with mismatch between cases and vax data
+# keep notes on states with mismatch between cases and vax data
 notes_df = data.frame(
   state_name = c(
     "Alabama",
@@ -426,11 +426,11 @@ notes_df = data.frame(
 # that we have the same counties in each dataset
 completeness_check = plt_df %>% 
   mutate(cases_flag = total_cases > 0, 
-          vax_flag = !is.na(mean_vax), 
-          case_vax_flag_comb = ifelse(cases_flag & vax_flag, "case reported and vax data", 
-                                    ifelse(cases_flag & !vax_flag, "case reported, no vax data", 
-                                           ifelse(!cases_flag & vax_flag, "no case reported", "no case reported")))) %>%
-          left_join(birth_pop %>% 
+         vax_flag = !is.na(mean_vax), 
+         case_vax_flag_comb = ifelse(cases_flag & vax_flag, "case reported and vax data", 
+                                     ifelse(cases_flag & !vax_flag, "case reported, no vax data", 
+                                            ifelse(!cases_flag & vax_flag, "no case reported", "no case reported")))) %>%
+  left_join(birth_pop %>% 
               mutate(location_name = paste0(county_name, ", ", state_name)) %>%
               select(state_name, location_name)) %>%
   summarize(n = n_distinct(location_name), .by = c("case_vax_flag_comb", "state_name")) %>%
@@ -445,12 +445,8 @@ write.csv(completeness_check, "R/FINAL/data/county_data_completeness_check.csv",
 
 
 
-## get info on how many counties per state
-births %>% 
-  mutate(state = substr(county_name, nchar(county_name)-1, nchar(county_name))) %>%
-  filter(year == "2016") %>%
-  summarize(n = n(), .by = c("state"))
 
+#### VALUES FOR TEXT -------------------------------
 top_10_pct = plt_df %>% filter(total_cases_per_pop > 0, log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>% 
   filter(total_cases_per_pop > quantile(total_cases_per_pop, 0.9)) 
 
@@ -459,8 +455,8 @@ top_10_pct %>%
          max_tcpp = max(total_cases_per_pop)) %>%
   filter(total_cases_per_pop == max_tcpp)
 
-mean_birth_rate = plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>% mutate(birth_rate = exp(log_mean_birth_rate)) %>% 
-  pull(birth_rate) %>% mean()
+mean_birth_rate = plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax), !is.na(births)) %>%
+  pull(log_mean_birth_rate) %>% exp() %>% mean()
 
 mean_vax_cov = plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>%
   pull(mean_vax) %>% mean()
@@ -469,7 +465,7 @@ top_10_pct %>%
   mutate(above_mean_birth = exp(log_mean_birth_rate) > mean_birth_rate, 
          below_mean_vax = mean_vax < mean_vax_cov) %>%
   summarize(n = n(), pct = n()/nrow(top_10_pct), .by = c("above_mean_birth", "below_mean_vax"))
-  
+
 top_10_pct %>%
   mutate(above_mean_birth = exp(log_mean_birth_rate) > mean_birth_rate, 
          below_mean_vax = mean_vax < mean_vax_cov) %>% filter(!above_mean_birth, !below_mean_vax)
@@ -478,7 +474,7 @@ top_10_pct %>%
 plt_df %>% filter(total_cases_per_pop > 0, log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>%
   mutate(tot = n()) %>%
   filter(mean_vax > 0.95, total_cases > 0) %>%
-  summarize(n = n(), tot = mean(tot), pct = n()/mean(tot))
+  summarize(n = n(), tot = mean(tot), pct = n()/mean(tot), mean_cases_per_pop = mean(total_cases_per_pop), mean_cases = mean(total_cases), min_cases = min(total_cases), max_cases = max(total_cases), min_cases_per_pop = min(total_cases_per_pop), max_cases_per_pop = max(total_cases_per_pop))
 
 # counties with vax < 0.95
 plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)), !is.na(mean_vax)) %>%
