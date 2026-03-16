@@ -304,11 +304,13 @@ us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymo
   geom_point(data = plt_df %>% filter(total_cases_per_pop > 0, log_mean_birth_rate > log(min(plot_honeymoon$mu))),
              aes(x = log_mean_birth_rate, y = as.double(mean_vax), size = total_cases_per_pop, color = log(total_cases_per_pop*1e4))) +
   ggrepel::geom_text_repel(data = plt_df %>% filter(total_cases_per_pop > 0, log_mean_birth_rate > log(min(plot_honeymoon$mu))) %>% 
-                             filter(total_cases_per_pop > quantile(total_cases_per_pop, 0.95)),
-                           aes(x = log_mean_birth_rate, y = as.double(mean_vax), label = location_name),
+                             filter(total_cases_per_pop > quantile(total_cases_per_pop, 0.95)) %>% 
+                             mutate(location_name2 = gsub(", ", ",\n",location_name)),
+                           aes(x = log_mean_birth_rate, y = as.double(mean_vax), label = location_name2),
                            box.padding = unit(1.1, "lines"),
-                           point.padding = unit(0.7, "lines"),
+                           point.padding = unit(0.4, "lines"),
                            min.segment.length = 0,
+                           max.overlaps = Inf,
                            segment.size = 0.4,
                            segment.color = 'black', size = 2
   ) +
