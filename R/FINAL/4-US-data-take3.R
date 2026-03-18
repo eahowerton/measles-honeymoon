@@ -293,11 +293,13 @@ plt_df %>%
 
 us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymoon$mu)))) + 
   geom_tile(data = plot_honeymoon, aes(x = log(mu), y = release_vax, fill = time)) +
-  # geom_contour(data = plot_honeymoon, aes(x = log(mu), y = release_vax, z = time),
-  #              color = "black", breaks = c(1, 3, 5, 7), linewidth = 0.2) +
-  # metR::geom_text_contour(data = plot_honeymoon,
-  #                          aes(x = log(mu), y = release_vax, z = time),
-  #                          breaks = c(1, 3, 5, 7), size = 3) +
+  geom_contour(data = plot_honeymoon, aes(x = log(mu), y = release_vax, z = time),
+               color = "gray", breaks = c(3, 5, 7), linewidth = 0.2) +
+  metR::geom_text_contour(data = plot_honeymoon,
+                           aes(x = log(mu), y = release_vax, z = time),
+                           breaks = c(3, 5, 7), size = 2, color = "black",
+                          stroke.colour = "gray",  # Outline color
+                          stroke = 0.1) +
   geom_point(aes(x = log_mean_birth_rate, y = as.double(mean_vax)), alpha = 0.8, shape = 21, color = "darkgray", size = 0.5, stroke = 0.2) +
   geom_point(data = plt_df %>% filter(total_cases_per_pop > 0, log_mean_birth_rate > log(min(plot_honeymoon$mu))),
              aes(x = log_mean_birth_rate, y = as.double(mean_vax), size = total_cases_per_pop, color = log(total_cases_per_pop*1e4))) +
@@ -319,7 +321,7 @@ us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymo
                         labels = c(1, 10, 100),
                         #trans = scales::pseudo_log_trans(sigma = 0.001), 
                         na.value = "darkgray", name = "cases per\n10,000") +
-  scale_fill_viridis_c(option = "rocket", na.value = "#FAEBDDFF", name = "time to\nRe > 1") +
+  scale_fill_viridis_c(option = "rocket", na.value = "#FAEBDDFF", name = "theoretical\nhoneymoon time") +
   scale_size_continuous(range = c(0,3)) +
   scale_x_continuous(expand = c(0,0),
                      breaks = c(log(c(50, 100, 200)/1e4)), 
@@ -330,6 +332,7 @@ us_dat_fig = ggplot(plt_df %>% filter(log_mean_birth_rate > log(min(plot_honeymo
   theme_bw(base_size = 7) + 
   theme(legend.key.width = unit(0.5, "cm"),
         legend.position = "bottom")
+us_dat_fig
 
 save("us_dat_fig",
      file="R/FINAL/data/us_dat_fig.rda")

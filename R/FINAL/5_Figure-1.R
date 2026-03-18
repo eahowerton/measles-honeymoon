@@ -108,7 +108,7 @@ p2 = who_vacc_sub %>% filter(country_name %in% example_countries, year > 1980) %
   mutate(drop_flag = ifelse(year >= start_yr & year <= start_yr + nyears_drop, TRUE, FALSE)) %>%
   filter(drop_flag, year > 2000) %>%
   ggplot(aes(x = year, y = coverage)) + 
-  geom_line(data = combined %>% filter(country_name %in% example_countries, year > start_yr), size = 0.4) +
+  geom_line(data = who_vacc_sub %>% filter(country_name %in% example_countries, year > start_yr), size = 0.4) +
   geom_line(color = "red", size = 0.6) +
   facet_wrap(vars(country_name), ncol = 2) + 
   scale_y_continuous(name = "MCV1 coverage", labels = scales::percent) + 
