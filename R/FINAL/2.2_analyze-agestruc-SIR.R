@@ -123,14 +123,17 @@ honeymoon_period = rt_after_release_full_long %>%
 honeymoon_period %>%
   filter(start_vax == 0.95) %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>% 
-  ggplot(aes(x = release_vax, y = time, color = as.factor(waifw_id))) +
-  geom_line(linewidth = 0.8) +
+  ggplot(aes(x = release_vax, y = time, color = as.factor(waifw_id), linetype = as.factor(waifw_id))) +
+  geom_line(linewidth = 0.5) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_linetype_manual(values = c("dashed", rep("solid", 4)), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0, 9, 0.3), label = scales::percent, name = "post-decline coverage") +
-  scale_y_continuous(name = "time to Re > 1") +
-  theme_bw() +
-  theme(legend.title = element_blank())
-# ggsave("R/FINAL/figures/honeymoon_age_full_start95.pdf", width = 5, height = 4)
+  scale_y_continuous(name = "theoretical honeymoon time\n(time to Re > 1)") +
+  theme_bw(base_size = 7) +
+  theme(legend.title = element_blank(), 
+        legend.key.width = unit(0.6, "cm")
+        )
+ggsave("R/FINAL/figures/honeymoon_age_full_start95.pdf", width = 3.5, height = 2.5)
 
 
 honeymoon_period %>%
