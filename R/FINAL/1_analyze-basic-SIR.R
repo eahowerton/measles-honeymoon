@@ -93,11 +93,11 @@ ggsave("R/FINAL/figures/honeymoon_SIR_sub.pdf", p_inset, width = 4, height = 4.5
 p = return_time %>%
   ggplot(aes(x = new_v, y = time_to_cross, color = as.factor(v))) + 
   geom_path(size = 1) +
-  scale_color_manual(values = RColorBrewer::brewer.pal(5, "Greys")[2:4], name = "pre-decline\ncoverage", 
+  scale_color_manual(values = RColorBrewer::brewer.pal(5, "Greys")[2:4], name = "pre-decline\nimmunization", 
                      labels = paste0(pre_v*100, "%")) +
   scale_x_continuous(breaks = seq(0, 9, 0.3), expand = c(0,0),
-                     label = scales::percent, name = "post-decline coverage") + 
-  scale_y_continuous(name = "time to Re > 1") + 
+                     label = scales::percent, name = "post-decline immunization") + 
+  scale_y_continuous(name = "theoretical honeymoon time\n(time to Re > 1)") + 
   theme_bw(base_size = 7) + 
   theme(legend.position = "bottom")
 
@@ -150,12 +150,12 @@ g = ggplot(broader_return_time %>% mutate(mu_lab = -1/mu), aes(x = new_v, y = v)
   metR::geom_text_contour(aes(z = time_to_cross), stroke = 0.15, breaks = c(1, 5, 10, 15), size = 2) +
   # geom_line(data = contours_manual, aes(x = new_v, y = line, group = honeymoon_time), linetype = 'dashed', color = "red") +
   facet_wrap(vars(mu_lab), ncol = 1, labeller = as_labeller(mu_labs, default = label_parsed)) +#, switch = "y") + 
-  scale_fill_distiller(palette = "Blues", direction = 0, name = "time to\nRe > 1") +
+  scale_fill_distiller(palette = "Blues", direction = 0, name = "theoretical\nhoneymoon\ntime") +
   scale_linetype_manual(values = c("longdash", "solid", "dotted")) +
   scale_x_continuous(expand = c(0,0), breaks = seq(0, 0.9, 0.3), label = scales::percent, 
-                     name = "post-decline coverage") + 
+                     name = "post-decline immunization") + 
   scale_y_continuous(expand = c(0,0), label = scales::percent, 
-                     name = "pre-decline coverage") + 
+                     name = "pre-decline immunization") + 
   theme_bw(base_size = 7) + 
   theme(legend.position = "bottom", 
         strip.background = element_blank())#, 
