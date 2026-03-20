@@ -69,14 +69,19 @@ stoch_step <- function (x, t, delta_t, n_sims, compartments, age_classes, params
     N_fert_vax[3, ] = rbinom(n = length(N_fert), size = N_fert, prob = v) # vaccinated go into R_0
     N_fert_vax[1, ] = N_fert - N_fert_vax[3, ]                            # the rest (not vaccinated) go into S_0 
     x_demog <- x + N_fert_vax + N_age_in - N_age_out
+    # importations
+    N_import = rbinom(n = n_reps, size = x_demog[S_indx, ], prob = 1-exp(-omega*delta_t))
+    x_postimport <- x_demog
+    x_postimport[S_indx, ] <- x_postimport[S_indx, ] - N_import
+    x_postimport[I_indx, ] <- x_postimport[I_indx, ] + N_import
     # get force of infection
     beta <- beta0*(beta1*cos(2*pi*(t-p))+1)
     N <- colSums(x)
-    lambda <- waifw%*%(beta/N*x_demog[I_indx, ])
-    StoI = rbinom(n = n_reps, size = x_demog[S_indx, ], prob = 1-exp(-lambda*delta_t)) # *delta_t
-    ItoR = rbinom(n = n_reps, size = x_demog[I_indx, ], prob = 1-exp(-gamma*delta_t))
+    lambda <- waifw%*%(beta/N*x_postimport[I_indx, ])
+    StoI = rbinom(n = n_reps, size = x_postimport[S_indx, ], prob = 1-exp(-lambda*delta_t)) # *delta_t
+    ItoR = rbinom(n = n_reps, size = x_postimport[I_indx, ], prob = 1-exp(-gamma*delta_t))
     # implement transitions
-    new_x = x_demog
+    new_x = x_postimport
     new_x[S_indx, ] <- new_x[S_indx, ] - StoI
     new_x[I_indx, ] <- new_x[I_indx, ] + StoI - ItoR
     new_x[R_indx, ] <- new_x[R_indx, ] + ItoR
@@ -123,16 +128,19 @@ buildFMatrix_withv <- function(age.classes=c(1:60, seq(72,120,by=12), seq(180,60
 
 # start with deterministic equilibrium of pre-vax values
 # just do stochastic rebound
-source("R/1_setup-WAIFW.R") # this will add waifw to environment, which is list of WAIFW matrices to test
+source("R/FINAL/2.1_setup-WAIFW.R") # this will add waifw to environment, which is list of WAIFW matrices to test
 n_waifw = length(waifw)
 
-paras = c(mu = 1/50, N = 500000, beta0 = 365, beta1 = 0, 
-          gamma = 365/14, v = 0.2, p = 0)
+paras = c(mu = 1/120, N = 500000, beta0 = 365, beta1 = 0, 
+          gamma = 365/14, v = 0.2, p = 0, omega = 1/1000)
 
-n_sims = 2
+fert = rep(paras["mu"], length(age_classes))
+mort = rep(paras["mu"], length(age_classes))
+
+n_sims = 100
 dt = 1/365
 
-IC_manual = c(0.4, 0.01, 0.69)
+IC_manual = c(0.04, 0.00, 0.96)
 names(IC_manual) = c("S", "I", "R")
 IC = setup_IC(start_pop = paras["N"], age_classes, c("S", "I", "R"), fert = fert, 
               mort = mort, IC_type = "manual", IC_manual = IC_manual, dt)
@@ -156,9 +164,9 @@ tst_long = melt(tst) %>%
 tst_long_tot = tst_long %>% 
   summarize(value = sum(value), .by = c("variable", "sim_id", "time"))
 
-ggplot(data = tst_long_tot, aes(x = time, y = value, group = sim_id)) + 
+ggplot(data = tst_long_tot %>% filter(variable == "I"), aes(x = time, y = value, group = sim_id)) + 
   geom_line() + 
-  geom_point() +
+  # geom_point() +
   facet_wrap(vars(variable), scales = "free")
 
 ggplot(data = tst_long_tot %>% summarize(value = sum(value), .by = c("time", "sim_id")) %>% mutate(variable = "N"), 
