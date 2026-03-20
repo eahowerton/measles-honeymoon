@@ -15,9 +15,6 @@ get_Rt_npatch <- function(p, S_vec, beta0, gamma, mu, c){
   cmat = matrix((1-c)/(p-1), ncol = p, nrow = p)
   diag(cmat) = c
   if(any(abs(rowSums(cmat)-1) > 1e-4)){browser()}
-  # cmat = matrix(c, ncol = p, nrow = p)
-  # browser()
-  # diag(cmat) = 1 - c * (p-1)
   NGM <- beta0 / (gamma + mu) * cmat %*% diag(S)
   eigenvalues <- eigen(NGM)$values
   R0 <- max(Re(eigenvalues))
