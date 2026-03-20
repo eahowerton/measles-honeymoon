@@ -43,18 +43,16 @@ run_ode <- function(age_classes, compartments, params, mort, fert, start_pop,
       compartments = compartments,
       age_classes = age_classes,
       mort = mort, 
-      fert = fert,
       waifw = waifw,
-      vax_change_times = vax_change_times, 
       vax_rates = vax_rates,
-      params = params, 
+      parms = params, 
       Fmat = Fmat,
       adjust_beta_flag = adjust_beta_flag, 
       print_warnings_flag = print_warnings_flag, 
       burnin = burnin
     ))
   if(beep_flag){beep()}
-  return(process_results(rslts, plot_flag, plot_title, max_t, dt))
+  return(process_results(rslts, max_t, dt))
 }
 
 #' provide an IC vector (distributed according to stable age distribution)

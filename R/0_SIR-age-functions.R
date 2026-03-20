@@ -2,7 +2,7 @@
 #' age structured SIR model (to pass to deSolve::ode())
 #' @param t time
 #' @param x current states (all ages and compartments)
-#' #' @param params named vector of parameter values
+#' @param parms named vector of parameter values
 #' @param compartments vector of ODE compartment names
 #' @param age_classes vector of upper bound for each age class
 #' @param mort vector of mortaility rates for each age group
@@ -14,11 +14,11 @@
 #'                         (using unity beta calculation)
 #' @param burnin double before which negative population sizes are replenished 
 #' @param print_warnings_flag print warnings if population sizes fall below 0
-sir_age_structured = function(t, x, params, compartments, age_classes, mort, Fmat,
+sir_age_structured = function(t, x, parms, compartments, age_classes, mort, Fmat,
                               vax_rates, waifw, adjust_beta_flag = FALSE, 
                               print_warnings_flag = FALSE, burnin = 0){
-  with(as.list(params),{
-    x = x[1:(length(x)-4)] # remove beta hat variables for calculations
+  with(as.list(parms),{
+    x = x[1:(length(x)-1)] # remove beta hat variable for calculations
     if(any(x < 0)){x[which(x<0)] = 0; if(t< burnin){x[seq(2, length(x),3)] = x[seq(2, length(x),3)] + 10}; print(paste0("adj at t = ", t))} # check x is non-neg
     nage = length(age_classes)
     ncomp = length(compartments)
