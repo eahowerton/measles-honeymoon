@@ -201,7 +201,7 @@ This ratio can be interpreted as the ratio of the number of new infections in th
 
 \section{Metapopulation model}
 
-We consider a metapopulation model with $P$ identical patches that are assumed to be equally connected, such that $1-c\%$ of transmission arises from cross-patch contact. The model can be defined as 
+We consider a metapopulation model with $P$ identical patches that are assumed to be equally connected, such that $c\%$ of transmission arises from cross-patch contact. The model can be defined as 
 
 % \begin{align*}
 %     \frac{dS_p}{dt} &= \mu N (1-v_p) - \frac{\beta}{N} \Big((1-c) I_p + \sum_{q\neq p} \frac{c}{(P-1)} I_q \Big) S_p - \mu S_p \\
@@ -216,7 +216,7 @@ We consider a metapopulation model with $P$ identical patches that are assumed t
 \end{align*}
 
 \noindent
-where $C_{p,q}$ is the connectivity matrix, which has $(1-c)$ along the diagonal and $c/(P-1)$ elsewhere. Analagous to the age-structured case, the next generation matrix is given by 
+where $C_{p,q}$ is the connectivity matrix, which has $c$ along the diagonal and $(1-c)/(P-1)$ elsewhere. Analagous to the age-structured case, the next generation matrix is given by 
 $$
     K = \frac{\beta}{N(\gamma + \mu)} C \overrightarrow{S(t)},
 $$
@@ -248,7 +248,7 @@ where $\overrightarrow{S(t)}$ is the number of susceptibles in each patch at tim
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{connectivity_fig.pdf}
-    \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until Re > 1, by post-decline immunization when drops occur in 10\% of patches among an equally connected network. Line color shows connectivity between patches (where 0.05 indicates 5\% of transmission is shared between patches), and the points show equivalence between a model with no connectivity and a model where 10\% of transmission is shared between patches. (B) Sensitivity of results to the percent of patches in which immunization declines. Results are shown for a population with $\mu =1/80 \text{years}^{-1}$, a pathogen with $R_0 = 17$, and a pre-decline immunization of 95\%. }
+    \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until Re > 1, by post-decline immunization when drops occur in 10\% of patches among an equally connected network. Line color shows connectivity between patches (where 0.05 indicates 5\% of transmission is shared between patches, or $c$ above), and the points show equivalence between a model with no connectivity and a model where 10\% of transmission is shared between patches. (B) Sensitivity of results to the percent of patches in which immunization declines, or $\rho$ above. Results are shown for a population with $\mu =1/80 \text{years}^{-1}$, a pathogen with $R_0 = 17$, and a pre-decline immunization of 95\%. }
 \end{figure}
 
 

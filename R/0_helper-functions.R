@@ -149,6 +149,42 @@ get_Rt <- function(waifw, S, beta0, gamma, mu, N){
   return(R0)
 }
 
+#' meta population R0/Re calculations, where c% of transmission occurs within
+#' patch, and ((1-c)/(p-1))% is shared with the other p-1 patches
+#' @param p number of patches
+#' @param S_vec vector of pct population susceptible in each patch
+#' @param beta0 transmission rate
+#' @param gamma recovery rate
+#' @param mu birth/death rate
+#' @param c connectivity, or % of transmission that occurs within own patch
+get_Rt_npatch <- function(p, S_vec, beta0, gamma, mu, c){
+  S = S_vec
+  cmat = matrix((1-c)/(p-1), ncol = p, nrow = p)
+  diag(cmat) = c
+  if(any(abs(rowSums(cmat)-1) > 1e-4)){browser()}
+  NGM <- beta0 / (gamma + mu) * cmat %*% diag(S)
+  eigenvalues <- eigen(NGM)$values
+  R0 <- max(Re(eigenvalues))
+  return(R0)
+}
+
+#' set up susceptibility such that some percent of patches experience vax decline
+#' assume 1/p patches experience vax decline, thus to change % of patches, change p
+#' @param p number of patches
+#' @param S_drop susceptibility in patch that experienced vax decline
+#' @param start_vax pre-decline vax that is maintained in all other patches
+#' @param beta0 transmission rate
+#' @param gamma recovery rate
+#' @param mu birth/death rate
+#' @param c connectivity, or % of transmission that occurs within own patch
+get_Rt_npatch_dropvax = function(p, S_drop, start_vax, beta0, gamma, mu, c){
+  get_Rt_npatch(
+    p, c(rep(1-start_vax, p-1), S_drop),
+    beta0, gamma, mu, c
+  )
+}
+
+
 #### FIND SCALARS --------------------------------------------------------------
 #' find scalar on WAIFW matrix to achieve a given R0
 find_scalar = function(s, R0, waifw, S, beta0, gamma, mu, N){

@@ -1,6 +1,6 @@
 # Fdb version 4
-["pdflatex"] 1774011699.2548 "/Users/emilyhowerton/Documents/GitHub/measles-honeymoon/supp/supplementary_material.tex" "supplementary_material.pdf" "supplementary_material" 1774011699.61451 0
-  "/Users/emilyhowerton/Documents/GitHub/measles-honeymoon/supp/supplementary_material.tex" 1774011698.66606 14945 5365a745aa08d2f35f35ee9d91290283 ""
+["pdflatex"] 1774019920.56562 "/Users/emilyhowerton/Documents/GitHub/measles-honeymoon/supp/supplementary_material.tex" "supplementary_material.pdf" "supplementary_material" 1774019920.91026 0
+  "/Users/emilyhowerton/Documents/GitHub/measles-honeymoon/supp/supplementary_material.tex" 1774019919.96386 14974 c7b67610b9f4c29512d243c75ed04aea ""
   "/usr/local/texlive/2024/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2024/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
@@ -55,8 +55,8 @@
   "connectivity_fig.pdf" 1773928022.47843 12990 952a46ddc98c6225618e848f2d52a3ea ""
   "honeymoon_age_full_comparestart.pdf" 1773075276.77058 10250 ac8a3f7288f4b6d72a6357c0dfeac1f8 ""
   "introduction_timing.pdf" 1760624282.04762 42715 50e2d0e31758a391154d10a7fa19e02b ""
-  "supplementary_material.aux" 1774011699.58129 1967 d189ebd4c49706f6c5bd4460355a434b "pdflatex"
-  "supplementary_material.tex" 1774011698.66606 14945 5365a745aa08d2f35f35ee9d91290283 ""
+  "supplementary_material.aux" 1774019920.87663 1999 e76e2e58b6c4b249d57ab435cc919f10 "pdflatex"
+  "supplementary_material.tex" 1774019919.96386 14974 c7b67610b9f4c29512d243c75ed04aea ""
   (generated)
   "supplementary_material.aux"
   "supplementary_material.log"
