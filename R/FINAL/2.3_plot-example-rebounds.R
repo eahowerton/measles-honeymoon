@@ -100,7 +100,7 @@ unity_beta_long = release_sim_df_long %>%
               select(time, variable, value) %>%
               rename(homog_value = value)) %>%
   left_join(scalars) %>%
-  mutate(unity_beta = homog_value/(scalar*value))
+  mutate(unity_beta = (scalar*value)/homog_value)
 
 Rt_long = release_sim_df_long %>% 
   filter(variable == "S") %>%
@@ -112,31 +112,42 @@ Rt_long = release_sim_df_long %>%
 max_contacts = lapply(waifw, melt) %>%
   bind_rows(.id = "waifw_id") %>%
   mutate(value_scaled = value/max(value), .by = c("waifw_id")) %>%
-  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>% 
+  mutate(waifw_id = as.integer(waifw_id)) %>%
+  left_join(scalars %>% select(-diff)) %>% 
+  mutate(value = value * scalar) %>% # rescale to have equivalent transmission rates
   mutate(m = max(value), .by = c("waifw_id")) %>%
   filter(value == m, waifw_id != 1) %>%
-  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3)))
+  mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
+  left_join(data.frame(Var1 = 1:length(age_classes), 
+                       age1 = age_classes)) %>%
+  left_join(data.frame(Var2 = 1:length(age_classes), 
+                       age2 = age_classes))
+  
+
+#### SETUP ---------------------------------------------------------------------
 
 # try making plot with each waifw in one col (easier to interpret?)
 age_labs = c(seq(3,15,3))
-pt0 = lapply(waifw, melt) %>%
+pt0 = lapply(waifw_full, melt) %>%
   bind_rows(.id = "waifw_id") %>%
   mutate(value_scaled = value/max(value), .by = c("waifw_id")) %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
-  ggplot(aes(x = Var1, y = Var2, fill = value_scaled)) + 
+  left_join(data.frame(Var1 = 1:length(age_classes_full), 
+                       age1 = age_classes_full)) %>%
+  left_join(data.frame(Var2 = 1:length(age_classes_full), 
+                       age2 = age_classes_full)) %>%
+  ggplot(aes(x = age1, y = age2, fill = value_scaled)) + 
   geom_tile() + 
-  geom_text(data = max_contacts, aes(label = round(m)), size = 2) +
+  geom_text(data = max_contacts, aes(label = round(m)), size = 1) +
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
-  scale_fill_distiller(palette = "YlGnBu", name = "contacts\n(relative to max)") + 
+  scale_fill_distiller(palette = "YlGnBu", name = "transmission\n(relative to max)") + 
   scale_x_continuous(expand = c(0,0),
-                     breaks = which(round(age_classes,3) %in% round(age_labs,3)), 
-                     labels = age_labs,
                      name = "age (years)") +
   scale_y_continuous(expand = c(0,0),
-                     breaks = which(round(age_classes,3) %in% round(age_labs,3)), 
-                     labels = age_labs,
                      name = "age (years)") +
-  theme(legend.position = "none", 
+  theme_gray(base_size = 7) +
+  theme(#legend.position = "bottom", 
+    legend.key.size = unit(0.34, "cm"),
         strip.background = element_blank())
 ggsave("R/FINAL/figures/waifws.pdf", pt0,  width = 8, height = 2.5)
 pt1 = release_sim_df_long %>%
@@ -146,13 +157,13 @@ pt1 = release_sim_df_long %>%
   ggplot(aes(x = time, y = value/paras["N"], color = as.factor(waifw_id))) + 
   geom_line(data = release_sim_df_long %>%
               filter(variable %in% c("I"), waifw_id == 1) %>%
-              summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>% select(-waifw_id), linewidth = 0.8, color = "black") +
-  geom_line(linewidth = 0.8) + 
+              summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>% select(-waifw_id), linewidth = 0.5, color = "black") +
+  geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since coverage decline") + 
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
   scale_y_continuous(name = "infections") +
-  theme_bw() + 
+  theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
         legend.position = "none",
         panel.grid.minor = element_blank(), 
@@ -163,18 +174,19 @@ pt2 = unity_beta_long %>%
   ggplot(aes(x = time, y = unity_beta, color = as.factor(waifw_id))) + 
   geom_text(data = data.frame(y = c(1e3, 1/1e3), x = c(10, 10), vjust = c(1, 0),
                               waifw_id = 1,
-                              lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
-            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
+                              lab = c("\nspeeding up\nwith age structure", "slowing down\nwith age structure\n")),
+            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 1.9, alpha = 1) +
   geom_line(data = unity_beta_long %>%
-              filter(variable == "BH", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.8, color = "black") + 
-  geom_line(aes(linetype = variable), linewidth = 0.8) + 
+              filter(variable == "BH", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") + 
+  geom_line(aes(linetype = variable), linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   guides(color = FALSE) +
+  coord_cartesian(ylim = c(1/1e3,1e3)) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since coverage decline") + 
-  scale_y_log10(limits = c(-1, 1)*1e3, breaks = c(1/rev(c(10, 1e2, 1e3)), c(1, 10, 1e2, 1e3)), 
-                labels = c("1/1,000", "1/100", "1/10", "1", "10", "100", "1,000"), name = "unity beta") +
-  theme_bw() +
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
+  scale_y_log10(breaks = c(1/rev(c(10, 1e2, 1e3)), c(1, 10, 1e2, 1e3)), 
+                labels = c("1/1,000", "1/100", "1/10", "1", "10", "100", "1,000"), name = "equivalence ratio") +
+  theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
         legend.position = "none",
         panel.grid.minor = element_blank(), 
@@ -184,13 +196,13 @@ pt3 = Rt_long %>%
   ggplot(aes(x = time, y = Rt, color = as.factor(waifw_id))) + 
   geom_hline(yintercept = 1, linetype = "dotted") + 
   geom_line(data = Rt_long %>% filter(waifw_id == 1) %>% select(-waifw_id), 
-            linewidth = 0.8, color = "black") +
-  geom_line(linewidth = 0.8) + 
+            linewidth = 0.5, color = "black") +
+  geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since coverage decline") + 
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
   scale_y_continuous(name = "Re") +
-  theme_bw() +
+  theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
         legend.position = "none",
         panel.grid.minor = element_blank(), 
@@ -208,17 +220,19 @@ pt4 = release_sim_df_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
              aes(size = I), color = "white") +
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) +
   guides(size = FALSE) + 
-  scale_fill_viridis_c(option = "inferno", name = "% susceptible") + 
-  scale_size_continuous(range = c(0,2)) + 
-  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "years since coverage decline") + 
+  scale_fill_viridis_c(option = "inferno", name = "% susceptible", labels = scales::percent) + 
+  scale_size_continuous(range = c(0,1.25)) + 
+  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "years since immunization decline") + 
   scale_y_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "age (year)") + 
-  theme(legend.position = "none",
+  theme_gray(base_size = 7) +
+  theme(#legend.position = "none",
+        legend.key.size = unit(0.35, "cm"),
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
 
-cowplot::plot_grid(pt0, pt3, pt1, pt4, pt2, ncol = 1, labels = LETTERS[1:5], align = "v", axis = "lr")
+cowplot::plot_grid(pt0, pt3, pt1, pt4, pt2, ncol = 1, labels = LETTERS[1:5], align = "v", axis = "lr", label_size = 8)
 
-ggsave("R/FINAL/figures/release_examples_age.pdf", width = 8, height = 10)
+ggsave("R/FINAL/figures/release_examples_age.pdf", width = 6.5, height = 7)
 
 # get values for text
 # max unity beta in first period (not reliable for peak at age 10)
@@ -235,8 +249,8 @@ unity_beta_long %>%
                               waifw_id = 2,
                               lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
             aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
-  geom_hline(yintercept = 0, linewidth = 0.8) +
-  geom_line(aes(color = variable), linewidth = 0.8, alpha = 0.7) + 
+  geom_hline(yintercept = 0, linewidth = 0.5) +
+  geom_line(aes(color = variable), linewidth = 0.5, alpha = 0.7) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_discrete(labels = c("both homogeneous", "homogeneous I", "homogeneous S", "both structured")) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
@@ -360,8 +374,8 @@ pt1 = release_sim_df_seas_long %>%
   ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
   geom_line(data = release_sim_df_seas_long %>%
               filter(variable %in% c("I"), waifw_id == 1) %>%
-              summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>% select(-waifw_id), linewidth = 0.8, color = "black") +
-  geom_line(linewidth = 0.8) + 
+              summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>% select(-waifw_id), linewidth = 0.5, color = "black") +
+  geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
@@ -379,8 +393,8 @@ pt2 = unity_beta_seas_long %>%
                               lab = c("\nslowing down\nwith age structure", "speeding up\nwith age structure\n")),
             aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 3, alpha = 1) +
   geom_line(data = unity_beta_seas_long %>%
-              filter(variable == "BH", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.8, color = "black") + 
-  geom_line(aes(linetype = variable), linewidth = 0.8) + 
+              filter(variable == "BH", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") + 
+  geom_line(aes(linetype = variable), linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   guides(color = FALSE) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
@@ -395,8 +409,8 @@ pt3 = Rt_seas_long %>%
   ggplot(aes(x = time, y = Rt, color = as.factor(waifw_id))) + 
   geom_hline(yintercept = 1, linetype = "dotted") + 
   geom_line(data = Rt_seas_long %>% filter(waifw_id == 1) %>% select(-waifw_id), 
-            linewidth = 0.8, color = "black") +
-  geom_line(linewidth = 0.8) + 
+            linewidth = 0.5, color = "black") +
+  geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since release") + 
