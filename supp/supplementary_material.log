@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.5.13)  20 MAR 2026 11:18
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.5.13)  20 MAR 2026 12:09
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -215,31 +215,34 @@ File: honeymoon_age_full_comparestart.pdf Graphic file (type pdf)
 <use honeymoon_age_full_comparestart.pdf>
 Package pdftex.def Info: honeymoon_age_full_comparestart.pdf  used on input line 243.
 (pdftex.def)             Requested size: 452.9679pt x 150.99182pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
 <connectivity_fig.pdf, id=27, 361.35pt x 252.945pt>
 File: connectivity_fig.pdf Graphic file (type pdf)
 <use connectivity_fig.pdf>
 Package pdftex.def Info: connectivity_fig.pdf  used on input line 250.
 (pdftex.def)             Requested size: 452.9679pt x 317.07976pt.
 
-
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[5 <./introduction_timing.pdf> <./honeymoon_age_full_comparestart.pdf>] [6 <./connectivity_fig.pdf>] (./supplementary_material.aux)
+[5 <./introduction_timing.pdf>] [6 <./honeymoon_age_full_comparestart.pdf> <./connectivity_fig.pdf>] (./supplementary_material.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 2618 strings out of 474116
- 40794 string characters out of 5743682
+ 2617 strings out of 474116
+ 40779 string characters out of 5743682
  1941187 words of memory out of 5000000
- 24983 multiletter control sequences out of 15000+600000
- 564402 words of font info for 58 fonts, out of 8000000 for 9000
+ 24982 multiletter control sequences out of 15000+600000
+ 564095 words of font info for 57 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 57i,14n,65p,946b,243s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,14n,65p,946b,235s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
-Output written on supplementary_material.pdf (6 pages, 194557 bytes).
+Output written on supplementary_material.pdf (6 pages, 194084 bytes).
 PDF statistics:
  98 PDF objects out of 1000 (max. 8388607)
  63 compressed objects within 1 object stream
