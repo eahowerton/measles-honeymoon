@@ -6,10 +6,19 @@
 \usepackage{geometry}
 \geometry{a4paper, margin=1in}
 
+%%%%%%%%%%%%%%%
+%% DE macros %%
+\usepackage{color}
+\newcommand{\commentmacro}[3]{\textcolor{#1}{\textbf{[#2: }\textsl{#3}\textbf{]}}}
+\newcommand{\david}[1]{\commentmacro{cyan}{David}{#1}}
+\newcommand{\Rn}{{\mathcal R}_0}
+\newcommand{\Reff}{{\mathcal R}_{\textrm{eff}}}
+%%%%%%%%%%%%%%%
+
 \renewcommand{\thefigure}{S\arabic{figure}}
 
 \title{Supplementary material for \\ \textit{Dynamic consequences of declining vaccination coverage in a heterogeneous world}}
-\author{Emily Howerton, Ayesha Mahmud, David J.D. Earn, \\Bryan T. Grenfell, C. Jessica E. Metcalf}
+\author{Emily Howerton, Ayesha Mahmud, David J.\,D.\ Earn, \\Bryan T. Grenfell, C. Jessica E. Metcalf}
 
 \date{}
 
@@ -17,21 +26,23 @@
 
 \maketitle
 
+\david{I've introduced macros for reproduction numbers and typeset them in what has become standard notation.}
 
 \section{Theoretical honeymoon time in the SIR model}
 We consider  here how reductions in vaccination can lead to rebounds in disease prevalence in a SIR (Susceptible, Infected, Recovered) model. In particular, we will focus on the post-vaccination ``honeymoon", or how long it takes for the disease to rebound after vaccination starts declining. Note, we use the term ``immunization" thorughout to account for both vaccination coverage and imperfect vaccine efficacy (i.e., immunization represents those successfully immunized, not merely vaccinated). 
 
-To begin, we will consider the simplest case where (a) a population has been under a ``pre-decline'' vaccination regime for a sufficiently long period of time to be at equilibrium, and (b) that the pathogen is locally eliminated.  Let $v_0$ be the immunization rate during the period of herd immunity, and let $v$ be the immunication rate after the decline begins. 
+To begin, we will consider the simplest case where (a) a population has been under a ``pre-decline'' vaccination regime for a sufficiently long period of time to be at equilibrium, and (b) that the pathogen is locally eliminated.  Let $v_0$ be the immunization rate during the period of herd immunity, and let $v$ be the immunization rate after the decline begins.
 
 In the SIR model, we know there are two possible equilibria: 
 \begin{enumerate}
-    \item disease-free equilibrium, where $S^* = v_0$
+    \item disease-free equilibrium, where $S^* = v_0$ \david{No, the DFE is $1-v_0$ (assuming you're taking $S$ to mean proportion susceptible).}
     \item endemic equilibrium, where $S^* = \frac{1}{\beta}(\mu + \gamma + \frac{\mu(\mu + \gamma)}{\sigma})$
+      \david{No, the EE for the standard SIR model is $S^* = \frac{1}{\Rn} = \frac{\gamma+\mu}{\beta}$.  The extra term does not come from the SIR model and you haven't defined $\sigma$.  It is for the SEIR model with $1/\sigma$ being the mean latent period.  Even then it is better to write $S^*=\frac{1}{\Rn}$ and $\Rn=(\frac{\beta}{\gamma+\mu})(\frac{\sigma}{\sigma+\mu})$.   It is also confusing to say there are two equilibria, but in the first case in the presence of immunity and the second case without.  I strongly suggest you actually write down the model equations before stating what the equilibria are, and derive equilibria for one clear model.}
 \end{enumerate}
 
-Here, we only consider the first case where a population is above the herd immunity threshold, $1/R_0$, because otherwise there is no honeymoon period. We are interested in the duration of the honeymoon period, which we hypothesize will depend on a number of factors including the $R_0$ of the pathogen, the equilibrium number of susceptibles $S^*$, the birth rate $\mu$, the immunization rate $v$ under decline, and the timing of importations. Because we cannot control the timing of importations, we define the honeymoon period as the time it takes for $R_e = R_0 \cdot S(t) > 1$. In other words, the time it takes for $R_e$ to cross 1 is a lower bound on the honeymoon period, where any importation after this point will start an outbreak. 
+Here, we only consider the first case where a population is above the herd immunity threshold, $1/\Rn$, because otherwise there is no honeymoon period. We are interested in the duration of the honeymoon period, which we hypothesize will depend on a number of factors including the $\Rn$ of the pathogen, the equilibrium number of susceptibles $S^*$, the birth rate $\mu$, the immunization rate $v$ under decline, and the timing of importations. Because we cannot control the timing of importations, we define the honeymoon period as the time it takes for $\Reff = \Rn \cdot S(t) > 1$. In other words, the time it takes for $\Reff$ to cross 1 is a lower bound on the honeymoon period, where any importation after this point will start an outbreak.
 
-We can calculate analytically the time it takes for $R_e$ to cross 1, under assumptions of local extinction (i.e., $I = 0$) and a constant post-decline immunization rate, $v$. In this case, we have a differential equation for the number of susceptibles, $S$, which we can solve using the following steps:
+We can calculate analytically the time it takes for $\Reff$ to cross 1, under assumptions of local extinction (i.e., $I = 0$) and a constant post-decline immunization rate, $v$. In this case, we have a differential equation for the number of susceptibles, $S$, which we can solve using the following steps:
 
 \begin{align*}
     \frac{dS}{dt} &= \mu (1-v) - \mu S \\
@@ -51,38 +62,38 @@ S(t) = (1-v) + (S_0 - (1-v)) e^{-\mu t}
 $$
 
 \noindent
-We can then find the time $t$ at which $R_e = R_0 S(t) = 1$, which yields
+We can then find the time $t$ at which $\Reff = \Rn S(t) = 1$, which yields
 
 % \begin{align}
-%     (1-v) + (S_0 - (1-v)) e^{-\mu t} &= 1/R_0  \\
-%     (S_0 - (1-v))e^{-\mu t}  &= (1/R_0 - (1-v)) \\\
-%     e^{-\mu t}  &= \frac{1/R_0 - (1-v)}{S_0 - (1-v)} \\
+%     (1-v) + (S_0 - (1-v)) e^{-\mu t} &= 1/\Rn  \\
+%     (S_0 - (1-v))e^{-\mu t}  &= (1/\Rn - (1-v)) \\\
+%     e^{-\mu t}  &= \frac{1/\Rn - (1-v)}{S_0 - (1-v)} \\
 % \end{align}
 $$
-t = \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{S_0 - (1-v)}\Big)
+t = \frac{-1}{\mu} \log \Big(\frac{1/\Rn - (1-v)}{S_0 - (1-v)}\Big)
 $$
 
 \noindent
 We can also rewrite this equation to show us the relationship between pre- and post-decline immunization levels that yield equivalent honeymoon periods. When vaccination rates are above the herd immunity threshold, $S_0 = 1-v_0$ is the pre-drop vaccination coverage, so 
 
 % \begin{align}
-%     t &= \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big) \\
-%     - t \mu &= \log \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big) \\
-%     e^{- t \mu} &= \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big) \\
-%     (1-v_0) - (1-v) &= e^{t \mu} (1/R_0 - (1-v)) \\
-%     v - v_0 &= e^{t \mu} (v - 1 + 1/R_0) \\
-%     v_0 &= v - e^{t \mu} (v - 1 + 1/R_0) \\
-%     v_0 &= v(1 - e^{t \mu}) + e^{t \mu} (1 - 1/R_0)
+%     t &= \frac{-1}{\mu} \log \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big) \\
+%     - t \mu &= \log \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big) \\
+%     e^{- t \mu} &= \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big) \\
+%     (1-v_0) - (1-v) &= e^{t \mu} (1/\Rn - (1-v)) \\
+%     v - v_0 &= e^{t \mu} (v - 1 + 1/\Rn) \\
+%     v_0 &= v - e^{t \mu} (v - 1 + 1/\Rn) \\
+%     v_0 &= v(1 - e^{t \mu}) + e^{t \mu} (1 - 1/\Rn)
 % \end{align}
 
 $$
-t = \frac{-1}{\mu} \log \Big(\frac{1/R_0 - (1-v)}{(1-v_0) - (1-v)}\Big)
+t = \frac{-1}{\mu} \log \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big)
 $$
 
 \noindent
 which can be simplified to
 $$
-v_0 = v(1 - e^{t \mu}) + e^{t \mu} (1 - 1/R_0).
+v_0 = v(1 - e^{t \mu}) + e^{t \mu} (1 - 1/\Rn).
 $$
 
 \section{Age-structured model}
@@ -103,7 +114,7 @@ Our age-structured model defines a discrete set of $A$ age classes.  Transmissio
 \noindent
 where $\alpha_i$ is the rate of aging out of age class $i$, $\mu$ is the birth and death rate, $\gamma$ is the recovery rate, $v$ is the immunization rate. This model assumes a total population size of 1, and compartments represent the proportion of individuals in each age class.
 
-We can calculate the basic reproduction number, $R_0$, and the effective reproduction number, $R_e$, for this model using the Next Generation Matrix method. In this case, the next generation matrix, $K$, is given by 
+We can calculate the basic reproduction number, $\Rn$, and the effective reproduction number, $\Reff$, for this model using the Next Generation Matrix method. In this case, the next generation matrix, $K$, is given by
 
 $$
     K = \frac{1}{\gamma + \mu} \begin{bmatrix}
@@ -117,7 +128,7 @@ $$
 \noindent
 for which we calculate the dominant eigenvalues numerically.
 
-% To calculate $R_0$ in the age-structured model, we use the Next Generation Matrix (NGM) method outlined in Diekmann et al 1990. To do so, we follow the steps from the Bjornstad book:
+% To calculate $\Rn$ in the age-structured model, we use the Next Generation Matrix (NGM) method outlined in Diekmann et al 1990. To do so, we follow the steps from the Bjornstad book:
 % \begin{enumerate}
 %     \item Define the infected states, $X = (I_1, I_2, ..., I_n)$ for ages $i = 1, 2, ..., n$
 %     \item Define the new infection terms, $\mathcal{F}(X) = \Big[ \sum_{j=1}^{n} \theta_{i,j} I_j S_i  \Big]$ for ages $i = 1, 2, ..., n$
@@ -134,7 +145,7 @@ for which we calculate the dominant eigenvalues numerically.
 %     \theta_{n,1} S_n & \theta_{n,2} S_n & \cdots & \theta_{n,n} S_n \\
 %     \end{bmatrix}
 %     $$
-%     \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $R_0$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
+%     \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $\Rn$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
 % \end{enumerate}
 
 \section{Unity beta calculation}
@@ -165,7 +176,7 @@ This ratio can be interpreted as the ratio of the number of new infections in th
 
 % In this case, however, the homogeneous model transmission rate is determined by $k(t)$, where the transmission rate becomes the value that is necessary to generate the same dynamics as the age-structured model. However, such dynamics can yield different reproduction numbers, so we may also be interested in the relationship between age-structured and homogenous dynamics when fixing the reproduction number. This is the case we use for the main text analysis. 
 
-% In particular, we contrast a number of WAIFW matrices, which on their own have different basic reporduction numbers. Thsu, to enable comparison, we calculate a scalar $c$ such that the reproduction number yields a given $R_0 = \beta/\gamma$. In the main text, we use $R_0 = 17$. Thus, we have
+% In particular, we contrast a number of WAIFW matrices, which on their own have different basic reporduction numbers. Thsu, to enable comparison, we calculate a scalar $c$ such that the reproduction number yields a given $\Rn = \beta/\gamma$. In the main text, we use $\Rn = 17$. Thus, we have
 
 % \begin{align}
 %     \text{age-structured infections} &=  \frac{c}{N}\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i I_j \\
@@ -225,14 +236,14 @@ where $\overrightarrow{S(t)}$ is the number of susceptibles in each patch at tim
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{honeymoon_age_full_comparestart.pdf}
-    \caption{Theoretical honeymoon time predictions, computed as time until Re > 1, under five assumptions about age-structured mixing. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $R_0 = 17$, and a pre-decline immunization of 95\% and 96\%. 
+    \caption{Theoretical honeymoon time predictions, computed as time until Re > 1, under five assumptions about age-structured mixing. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and a pre-decline immunization of 95\% and 96\%.
 }
 \end{figure}
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{connectivity_fig.pdf}
-    \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until Re > 1, by post-decline immunization when drops occur in 10\% of patches among an equally connected network. Line color shows connectivity between patches (where 0.05 indicates 5\% of transmission is shared between patches, or $c$ above), and the points show equivalence between a model with no connectivity and a model where 10\% of transmission is shared between patches. (B) Sensitivity of results to the percent of patches in which immunization declines, or $\rho$ above. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $R_0 = 17$, and a pre-decline immunization of 95\%. }
+    \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until Re > 1, by post-decline immunization when drops occur in 10\% of patches among an equally connected network. Line color shows connectivity between patches (where 0.05 indicates 5\% of transmission is shared between patches, or $c$ above), and the points show equivalence between a model with no connectivity and a model where 10\% of transmission is shared between patches. (B) Sensitivity of results to the percent of patches in which immunization declines, or $\rho$ above. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and a pre-decline immunization of 95\%. }
 \end{figure}
 
 
