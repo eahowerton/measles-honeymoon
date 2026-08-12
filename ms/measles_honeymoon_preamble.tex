@@ -1,0 +1,74 @@
+% Shared manuscript formatting for the generic arXiv build.
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage[normalem]{ulem}
+\usepackage{xspace}
+\usepackage{placeins}
+\usepackage{caption}
+\usepackage{lineno}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage[capitalise,nameinlink]{cleveref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue,
+  pdfauthor={Emily Howerton et al.},
+  pdftitle={Dynamic consequences of declining vaccination coverage in a heterogeneous world}
+}
+
+% Light-grey continuous line numbers for collaborative review.
+\definecolor{linenogray}{gray}{0.65}
+\renewcommand{\linenumberfont}{\normalfont\tiny\sffamily\color{linenogray}}
+
+% Author comments in David's usual bracketed style.
+\definecolor{commentorange}{RGB}{210,105,0}
+\definecolor{commentblue}{RGB}{40,80,180}
+\newcommand{\commentmacro}{\showcomment}
+\newcommand{\showcomment}[3]{\textcolor{#1}{\textbf{[#2: }\textsl{#3}\textbf{]}}}
+\newcommand{\nocomment}[3]{}
+\newcommand{\david}[1]{\commentmacro{cyan}{David}{#1}}
+\newcommand{\emily}[1]{\commentmacro{magenta}{Emily}{#1}}
+\newcommand{\jess}[1]{\commentmacro{commentorange}{Jess}{#1}}
+\newcommand{\bryan}[1]{\commentmacro{commentblue}{Bryan}{#1}}
+\newcommand{\dsugg}[1]{{\color{red}#1}}
+\newcommand{\stkout}[1]{{\color{blue}\ifmmode\text{\sout{\ensuremath{#1}}}\else\sout{#1}\fi}}
+\newcommand{\thickredline}{\par\bigskip\noindent{\color{red}\rule{\linewidth}{4pt}}\par\bigskip}
+
+% Reproduction-number and vaccination notation.
+\newcommand{\R}{\mathcal{R}}
+\newcommand{\Rn}{\R_{0}}
+\newcommand{\Reff}{\R_{\mathrm{eff}}}
+\newcommand{\vcrit}{v_{\mathrm{crit}}}
+
+% Frequently used prose and calculus macros.
+\newcommand{\ie}{\textit{i.e., }}
+\newcommand{\eg}{\textit{e.g., }}
+\newcommand{\etc}{\emph{etc.}\xspace}
+\newcommand{\dee}{\mathrm{d}}
+\newcommand{\dd}[2]{\frac{\dee #1}{\dee #2}}
+
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0pt}
+
+% Keep review comments out of the PDF bookmarks and metadata strings.
+\pdfstringdefDisableCommands{%
+  \def\david#1{}%
+  \def\emily#1{}%
+  \def\jess#1{}%
+  \def\bryan#1{}%
+  \def\dsugg#1{#1}%
+  \def\stkout#1{}%
+}

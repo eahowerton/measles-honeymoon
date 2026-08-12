@@ -8,7 +8,17 @@
 
 # LaTeX intermediate build files
 *.aux
+*.bbl
+*.bcf
+*.blg
+*.ent
 *.fdb_latexmk
 *.fls
 *.log
+*.nav
+*.out
+*.run.xml
+*.snm
 *.synctex.gz
+*.tikz
+*.toc
