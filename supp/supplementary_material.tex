@@ -34,9 +34,8 @@
 \maketitle
 \linenumbers
 
-\emily{I've rewritten the first half of the first section to define the model equations and derive the equilibria explicitly.}
-
 \section{Theoretical honeymoon time in the SIR model}
+\emily{I've rewritten the first half of this section to define the model equations and derive the equilibria explicitly.}
 We consider here how reductions in vaccination can lead to rebounds in disease prevalence. In particular, we will focus on the post-vaccination ``honeymoon", or how long it takes for the disease to rebound after vaccination starts declining. We use the term ``effective immunization coverage" throughout for the proportion successfully immunized, thereby accounting for both vaccination coverage and imperfect vaccine efficacy. 
 
 We begin with an SIR (Susceptible, Infected, Recovered) model of disease transmission. We assume that births and deaths occur at the same rate, $\mu$, and some proportion, $v$, of births are effectively immunized. We further assume that new infections occur upon contact between susceptible and infected individuals at rate $\beta$, and infected individuals recover at rate $\gamma$. The model can be defined by the following system of ordinary differential equations: 
@@ -117,9 +116,13 @@ For fixed $T$ and $\mu$, Equation~\eqref{eq:equivalent-immunization-coverage} de
 \david{Heatmap file: \path{figures/honeymoon_SIR_with_linear_heatmap.pdf}.  I have referred to it descriptively because the main manuscript is not in \LaTeX\ and its figure number may change.}
 
 \section{Age-structured model}
+
+\emily{Still outstanding: fix the error in the NGM calculation}
+
+\label{sec:age-structure}
 Our age-structured model defines a discrete set of $A$ age classes.  Transmission between individuals of different age classes is governed by a who-acquires-infection-from-whom (WAIFW) matrix, $\theta_{i,j}$, where $i$ and $j$ index age classes. The full system of ordinary differential equations is as follows:
 
-\begin{align*}
+\begin{align}
     % susceptible 
     \frac{dS_{i=1}}{dt} &= \mu (1-v) - \sum_{j=1}^{A} \theta_{1,j} S_1 I_j - \mu S_1 - \alpha_1 S_1 \\
     \frac{dS_{i\neq1}}{dt} &= \alpha_{i-1} S_{i-1} - \sum_{j=1}^{A} \theta_{i,j} S_i I_j - \mu S_i - \alpha_i S_i \\
@@ -129,24 +132,24 @@ Our age-structured model defines a discrete set of $A$ age classes.  Transmissio
     % recovered
     \frac{dR_{i=1}}{dt} &= \mu v + \gamma I_1 - \mu R_1 - \alpha_1 R_1 \\
     \frac{dR_{i\neq1}}{dt} &= \alpha_{i-1} R_{i-1} + \gamma I_i - \mu R_i - \alpha_i R_i 
-\end{align*}
+\end{align}
 
 \noindent
 where $\alpha_i$ is the rate of aging out of age class $i$, $\mu$ is the birth and death rate, $\gamma$ is the recovery rate, and $v$ is the effective immunization coverage at birth. This model assumes a total population size of 1, and compartments represent the proportion of individuals in each age class.
 
 We can calculate the basic reproduction number, $\Rn$, and the effective reproduction number, $\Reff$, for this model using the Next Generation Matrix method. In this case, the next generation matrix, $K$, is given by
 
-$$
+\begin{align}
     K = \frac{1}{\gamma + \mu} \begin{bmatrix}
-     \theta_{1,1} S_1(t) & \theta_{1,2} S_1(t) & \cdots & \theta_{1,n} S_1(t) \\
-    \theta_{2,1} S_2(t) & \theta_{2,2} S_2(t) & \cdots & \theta_{2,n} S_2(t) \\
+     \theta_{1,1} S_1(t) & \theta_{1,2} S_1(t) & \cdots & \theta_{1,A} S_1(t) \\
+    \theta_{2,1} S_2(t) & \theta_{2,2} S_2(t) & \cdots & \theta_{2,A} S_2(t) \\
     \vdots & \vdots & \ddots & \vdots \\
-    \theta_{n,1} S_n(t) & \theta_{n,2} S_n(t) & \cdots & \theta_{n,n} S_n(t) \\
+    \theta_{A,1} S_A(t) & \theta_{A,2} S_A(t) & \cdots & \theta_{A,A} S_A(t) \\
     \end{bmatrix} = \frac{1}{\gamma + \mu} \theta \overrightarrow{S(t)},
-    $$
+\end{align}
 
 \noindent
-for which we calculate the dominant eigenvalues numerically.
+for which we calculate the dominant eigenvalues numerically. 
 
 % To calculate $\Rn$ in the age-structured model, we use the Next Generation Matrix (NGM) method outlined in Diekmann et al 1990. To do so, we follow the steps from the Bjornstad book:
 % \begin{enumerate}
@@ -168,70 +171,70 @@ for which we calculate the dominant eigenvalues numerically.
 %     \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $\Rn$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
 % \end{enumerate}
 
-\section{Unity beta calculation}
-To quantify the role of age-structured dynamics, we will use a theoretical quantity called ``unity beta". Consider an age-structured transmission process that is governed by heterogeneous contacts between age groups, where the number of new infections in the age structured model is
+\section{The equivalence ratio}
+\emily{I've removed the ``unity'' terminology, as it doesn't seem necessary. The only reason to keep it would be that ``unity calculation" is how Ottar describes it in his book, which I think is the (only? or) primary reference/derivation. ``Equivalence ratio'' is the term I coined for the slightly modified version used in the main text (now described in detail below), but I'm open to other names.}
 
-$$
-\text{age-structured infections} =  \frac{1}{N}\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i I_j
-$$
+The dynamics of the age-structured model can be understood in relation to a model of aggregate variables where individuals are assumed to mix homogeneously (i.e., all susceptible individuals mix with all infective and all recovered individuals equally). To equate the dynamics under these two models, incidence can be written as 
 
-\noindent
-where $\theta_{i,j}$ is the transmission rate between age groups $i$ and $j$. We can then calculate a time-varying quantity, $\hat{\beta}(t)$, called ``unity beta" that ensures the number of new infections in the age-structured model is equal to the number of new infections in a non-age-structured model, where 
-
-\begin{align*}
-    \text{age-structured infections} &=  \frac{1}{N}\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i I_j \\
-    &= \frac{\hat{\beta}(t)}{N}\sum_{i=1}^{n} S_i \sum_{j=1}^{n} I_j \\
-    &= \text{homogenous infections}
-\end{align*}
+\begin{equation}
+\begin{aligned}
+    \text{age-structured infections} &=  \sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t) \\
+    &= \hat{\beta}(t)\sum_{i=1}^{n} S_i(t) \sum_{j=1}^{n} I_j(t) \\
+    &= \text{homogeneous infections}
+\end{aligned}
+\label{eq:derive-unity-beta-simple}
+\end{equation}
 
 \noindent
-given that 
+given the time-varying transmission rate, $\hat{\beta}(t)$, defined as 
 
-$$
-\hat{\beta}(t) = \frac{\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i I_j}{\sum_{i=1}^{n}S_i\sum_{j=1}^{n}I_j}
-$$
+\begin{align}
+\hat{\beta}(t) = \frac{\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t)}{\sum_{i=1}^{n}S_i(t)\sum_{j=1}^{n}I_j(t)}.
+\label{eq:unity-beta-simple}
+\end{align} 
+
+\hfill
+
+\emily{This $\hat{\beta}(t)$ gives us a time-varying reproduction number with dynamics equivalent to an age-structured model. For example, this would reproduce the red line in main text Figure 3C. In the main text, though, we have fixed the WAIFW matrices and then compared the ensuing dynamics (i.e., compared red line to black line). Hopefully my attempt below explains what I've done and the logic.}
+
+\hfill
+
+In the main text, however, we compared dynamics under structured WAIFW mixing matrices to a flat WAIFW matrix reflective of homogeneous mixing. Let $\theta$ and $\theta^{\text{flat}}$ be the WAIFW matrices that define the transmission dynamics we wish to compare. We choose $\theta^{\text{flat}}_{i,j} = c$ for all $i,j$ such that both models have the same basic reproduction number. Similar to Equation~\eqref{eq:derive-unity-beta-simple}, we have
+\begin{equation}
+\begin{aligned}
+    \text{age-structured infections} &= \sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t) \\
+    \text{flat WAIFW infections} & =\sum_{i=1}^{n}\sum_{j=1}^{n} \theta^{\text{flat}}_{i,j} S^{\text{flat}}_i(t) I^{\text{flat}}_j(t) \\ 
+    &= c \sum_{i=1}^{n} S^{\text{flat}}_i(t) \sum_{j=1}^{n} I^{\text{flat}}_j(t)
+\end{aligned}
+\end{equation}
 
 \noindent
-This ratio can be interpreted as the ratio of the number of new infections in the age-structured model to the number of new infections in the homogenous model. If $\hat{\beta}(t) > 1$ then age-structured dynamics are fast relative to the homogenous dynamics, and vice versa if $\hat{\beta}(t) < 1$.
+which we can use to define an equivalence ratio, $k(t)$, as
 
-% In this case, however, the homogeneous model transmission rate is determined by $k(t)$, where the transmission rate becomes the value that is necessary to generate the same dynamics as the age-structured model. However, such dynamics can yield different reproduction numbers, so we may also be interested in the relationship between age-structured and homogenous dynamics when fixing the reproduction number. This is the case we use for the main text analysis. 
+\begin{align}
+k(t) = \frac{\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t)}{c \sum_{i=1}^{n}S^{\text{flat}}_i(t)\sum_{j=1}^{n}I^{\text{flat}}_j(t)}
+\label{eq:equivalence-ratio}
+\end{align}
 
-% In particular, we contrast a number of WAIFW matrices, which on their own have different basic reporduction numbers. Thsu, to enable comparison, we calculate a scalar $c$ such that the reproduction number yields a given $\Rn = \beta/\gamma$. In the main text, we use $\Rn = 17$. Thus, we have
+This ratio can be interpreted as the ratio of the number of new infections in the age-structured model to the number of new infections in the homogeneous model. If $k(t) > 1$ then age-structured dynamics are faster than the homogeneous dynamics, and vice versa if $k(t) < 1$.
 
-% \begin{align}
-%     \text{age-structured infections} &=  \frac{c}{N}\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i I_j \\
-%     \text{homogenous infections} &=  \frac{\beta}{N}\sum_{i=1}^{n} S_i \sum_{j=1}^{n} I_j
-% \end{align}
+\emily{One challenge with interpretation that I'm not sure how to resolve: because this compares instantaneous incidence, it is sensitive to the relative timing of outbreaks. For this reason, I'm not sure it's very meaningful after the first outbreak. But again, open to thoughts.}
 
-% \noindent
-% Following the same approach, we can equate these two quantities with a ratio $k(t)$: 
+\emily{I will wait to update the main text until we've verified this calculation and settled on notation/terminology.}
 
-% \begin{align}
-%     \frac{c}{N}\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i I_j &= \frac{k(t)\beta}{N}\sum_{i=1}^{n} S_i \sum_{j=1}^{n} I_j
-% \end{align}
-
-% \noindent
-% where
-
-% \begin{align}
-%     k(t) = \frac{c\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i I_j}{\beta\sum_{i=1}^{n} S_i \sum_{j=1}^{n} I_j}
-% \end{align}
-
-% \noindent
-% This quantity, $k(t)$ only differs slightly from the previous definition of unity beta, $\hat{\beta}(t)$, where it is the scaled ratio of the number of new infections in the homogenous model to the number of new infections in the age-structured model with an equivalent transmission rate. Interpretation is the same as $\hat{\beta}(t)$ above.
 
 \section{Metapopulation model}
 
 We consider a metapopulation model with $P$ identical patches that are assumed to be equally connected, such that $c\%$ of transmission arises from cross-patch contact. The model can be defined as 
 
-\begin{align*}
+\begin{align}
     \frac{dS_p}{dt} &= \mu (1-v_p) - \beta \sum_{q=1}^{P} C_{p,q} S_p I_q - \mu S_p \\
     \frac{dI_p}{dt} &= \beta \sum_{q=1}^{P} C_{p,q} S_p I_q - (\gamma + \mu) I_p \\
     \frac{dR_p}{dt} &= \mu v_p + \gamma I_p - \mu R_p
-\end{align*}
+\end{align}
 
 \noindent
-where $C_{p,q}$ is the connectivity matrix, which has $1-c$ along the diagonal and $c/(P-1)$ elsewhere. Analagous to the age-structured case, the next generation matrix is given by 
+where $C_{p,q}$ is the connectivity matrix, which has $1-c$ along the diagonal and $c/(P-1)$ elsewhere. Analogous to the age-structured case, the next generation matrix is given by 
 $$
     K = \frac{\beta}{\gamma + \mu} C \overrightarrow{S(t)},
 $$
