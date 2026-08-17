@@ -13,7 +13,7 @@ The equally important but opposite question of how dynamics change as vaccinatio
 
 Here, we address this question through the lens of the epidemiological ``honeymoon''. We build upon standard theory on post-outbreak honeymoon dynamics to understand the dynamical consequences of declining vaccination coverage. We explore known drivers of honeymoon dynamics and extend the theory to include the role of age structure. We use these results as a foundation to interpret the current landscape of reported vaccination coverage. Together, this work provides a framework that can bound our expectations for future outbreak dynamics and help guide planning to avoid resurgent measles outbreaks in the future. Ascertainment of susceptible dynamics through serology emerges as a key priority.
 
-\begin{figure}[p]
+\begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figures/figure1_global_mcv1_coverage.png}
 \caption{\textbf{Reported first-dose coverage of measles containing vaccine (MCV1) across 195 countries from 2000--2023.} For each World Health Organization region, reported MCV1 coverage is shown for each year (darker red indicates lower coverage). Years where coverage decreased by at least 5\% (e.g., 95\% to 90\%, or 90\% to 75\%) are highlighted with a black dot. White indicates data \stkout{was}\dsugg{were} not available for that country and year. MCV1 data are collected from \citep{WHO_UNICEF2024}.}
@@ -27,44 +27,41 @@ A post-honeymoon outbreak requires the growth of a pocket of susceptible individ
 
 We hypothesize that these forces will also be key drivers if vaccination declines, although they may need to be recontextualized. While still replenished by birth rates, population-level susceptibility will depend on past infections, prior vaccination rates, and the extent of vaccination declines. Importation rates will be driven by connectivity with other communities and the prevalence of outbreaks among those connected communities.
 
-While importation can be modeled deterministically, it is inherently a stochastic process that is difficult to predict. For this reason, we use the accumulation of susceptible individuals as the key marker of theoretical honeymoon times. In line with previous serologically based predictions of outbreaks \citep{ChenEtAl1990,GayEtAl1995,WinterEtAl2018,MetcalfEtAl2020}, the rate of susceptible accumulation determines the time until which an importation would successfully lead to an outbreak (on average) \citep{BjornstadEtAl2002}. In epidemiological theory\dsugg{, ignoring stochastic effects,} this time is the point at which the effective reproduction number exceeds one.
+While importation can be modeled deterministically, it is inherently a stochastic process that is difficult to predict. For this reason, we use the accumulation of susceptible individuals as the key marker of theoretical honeymoon times. In line with previous serologically based predictions of outbreaks \citep{ChenEtAl1990,GayEtAl1995,WinterEtAl2018,MetcalfEtAl2020}, the rate of susceptible accumulation determines the time until which an importation would successfully lead to an outbreak (on average\dsugg{, ignoring stochastic effects}) \citep{BjornstadEtAl2002}. In epidemiological theory, this time is the point at which the effective reproduction number exceeds one.
 
 \section{Predictions from simple epidemiological theory}
 \label{sec:simple-theory}
 
-This definition of theoretical honeymoon time is analytically tractable in the Susceptible-Infected-Recovered (SIR) model of epidemiological dynamics. We model a population in which (1) measles is locally eliminated, and (2) susceptibility at the start of our analysis is determined by some pre-decline immunization level, which accounts for both vaccine coverage and efficacy.
+This definition of theoretical honeymoon time is analytically tractable in the Susceptible-Infected-Recovered (SIR) model of epidemiological dynamics. We model a population in which (1) measles is locally eliminated, and (2) susceptibility at the start of our analysis is determined by some pre-decline effective immunization coverage, which we assume captures the total proportion effectively immunized after accounting for both vaccine coverage and efficacy.
 
 For tractability, we opted for the simplest assumptions about how vaccination would decline: immunization drops immediately to a new level and remains there indefinitely. We call this ``post-decline immunization''. While in reality vaccination coverage fluctuates and changes in more complicated patterns, all such declines lead to an accumulation of susceptibles that is slower than immediately dropping to the lowest level. Thus, this simple assumption provides a worst-case scenario and a lower bound on the honeymoon period.
 
-We can derive the theoretical honeymoon time, or the time until the effective reproduction number exceeds one, as
-
-\david{I think it is better to write equations in a manifestly positive way: flip the fractions and get rid of the minus signs, since the negatives cancel.}
+We can derive (Supplementary Material, Section 1) the theoretical honeymoon time, $T$, or the time until the effective reproduction number exceeds one, as
 
 \begin{equation}
 \begin{aligned}
-  \text{theoretical honeymoon time} 
-    &= -\frac{1}{\mu}\log\!\left( \frac{1/\Rn-(1-v)}{S_0-(1-v)} \right) \\ 
-    &= \frac{1}{\mu}\log\!\left( \frac{S_v-S^*}{S_v-S_0} \right).
+  T  = \frac{1}{\mu} \log\left(\frac{v_0-v}{\vcrit-v}\right)
 \end{aligned}
 \label{eq:honeymoon-time-main}
 \end{equation}
 
-where $\mu$ is the birth and death rate, $\Rn$ is the basic reproduction number, $S_0$ is the proportion of the population susceptible before vaccination decline and $v$ is the post-decline rate of immunization \david{v is technically a proportion not a rate (similar to the logic of calling $R_0$ a number rather than a rate)}.
+\noindent
+where $\mu$ is the birth and death rate, $v_0$ is the pre-decline effective immunization coverage, $v$ is the post-decline effective immunization coverage, and $\vcrit = 1-1/\Rn$ represents the critical effective immunization coverage, or the herd-immunity threshold. In the case where the post-decline effective immunization coverage drops below the critical threshold (i.e., $v < \vcrit$), the ratio $\frac{v_0-v}{\vcrit-v}$ describes the ``buffer'' of existing immunity that can be lost before the effective reproduction number exceeds one, and $\frac{1}{\mu}$ characterizes how quickly these susceptibles will accumulate through births.
 
-This formula can be easily interpreted. The term $S^* = 1/\Rn$ is the population-level susceptibility at which the model predicts the effective reproduction number is equal to one, and $S_{v}\  = 1 - v$ is the new susceptibility expected post-decline (in the absence of an outbreak). The ratio, then, describes the ``buffer'' of existing immunity that can be lost before the effective reproduction number exceeds one. Finally, $\frac{1}{\mu}$ characterizes how quickly these susceptibles will accumulate through births.
+Honeymoon times are predicted to vary substantially, depending on the extent of immunization decline (Figure \ref{fig:simple-honeymoon}A, shown for a population with a life expectancy of 80 years and thus $\mu = 1/80$ years\textsuperscript{-1} and a pathogen like measles with $\Rn = 17$). When declines are dramatic, honeymoon times can be short (for example, less than a year if prior immunization levels are just above the herd immunity threshold). However, when declines are small, honeymoon times are predicted to be on the order of decades. For example, if the pre-decline effective immunization coverage is 96\%, honeymoon times are expected to be greater than 10 years as long as immunization does not drop below 80\%. Prior immunity in the population also has a substantial effect on honeymoon times; if pre-decline immunization is 95\% (instead of 96\%), a drop to 80\% immunization will yield a honeymoon time of 4.85 years.
 
-Honeymoon times are predicted to vary substantially, depending on the extent of immunization decline (Figure \ref{fig:simple-honeymoon}A, shown for a population with a life expectancy of 80 years and thus $\mu = 1/80$ years\textsuperscript{-1} and a pathogen like measles with $\Rn = 17$). When declines are dramatic, honeymoon times can be short (for example, less than a year if prior immunization levels are just above the herd immunity threshold). However, when declines are small, honeymoon times are predicted to be on the order of decades. For example, if the pre-decline immunization level is 96\%, honeymoon times are expected to be greater than 10 years as long as immunization does not drop below 80\%. Prior immunity in the population also has a substantial effect on honeymoon times; if pre-decline immunization is 95\% (instead of 96\%), a drop to 80\% immunization will yield a honeymoon time of 4.85 years.
-
-We can also derive \david{again, refer to supp?} the relationship between pre-decline immunization, $v_0$, post-decline immunization, $v$, and theoretical honeymoon time, $t^H$:
+We can also derive (Supplementary Material, Section 1) the relationship between pre-decline immunization, $v_0$, post-decline immunization, $v$, and theoretical honeymoon time, $T$:
 
 \begin{equation}
-v_0 = e^{\mu t^H}(1-1/\Rn)+(1-e^{\mu t^H})v.
+%v_0 = e^{\mu t^H}(1-1/\Rn)+(1-e^{\mu t^H})v.
+v_0=\bigl(1-e^{\mu T}\bigr)v+e^{\mu T}\vcrit.
 \label{eq:coverage-isocline-main}
 \end{equation}
 
-We note a linear relationship between pre- and post-decline vaccination coverage, where birth rates modulate the slope and intercept of this relationship (Figure \ref{fig:simple-honeymoon}B). This suggests a simple conversion between pre-decline and post-decline immunization levels in terms of honeymoon time. Full derivations are provided in the Supplementary Material.\david{Ok. Consider flagging this earlier.}
+\noindent
+We note a linear relationship between pre- and post-decline vaccination coverage, where birth rates modulate the slope and intercept of this relationship (Figure \ref{fig:simple-honeymoon}B). This suggests a simple conversion between pre-decline and post-decline immunization levels in terms of honeymoon time. 
 
-\begin{figure}[p]
+\begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{../figures/honeymoon_SIR_with_linear_heatmap.pdf}
 \caption{\textbf{Theoretical honeymoon time predictions from basic epidemiological theory.} (A) Theoretical honeymoon time, computed as time until $\Reff>1$, by post-decline vaccination coverage. Three pre-decline immunization levels are shown (96\%: dark gray, 95\%: gray, 94\%: light gray). Results are shown for a population with $\mu = 1/80$ years\textsuperscript{-1} and a pathogen with $\Rn = 17$. (B) Relationship between pre- and post-decline immunization levels in a population with a slower birth rate (top, $\mu = 1/80$ years\textsuperscript{-1}) versus a faster birth rate (bottom, $\mu = 1/50$ years\textsuperscript{-1}). Again, we assume $\Rn = 17$.}
@@ -102,14 +99,14 @@ Importantly, the structure of the WAIFW matrix also has a significant effect on 
 
 This relationship is much flatter with the consideration of age structure. When immunization levels remain relatively high, age structure predicts shorter honeymoon periods (e.g., 6.7 years when immunization drops from 95\% to 90\% and 3.8 years to 80\% with POLYMOD mixing). Honeymoon times are predicted to be shorter under age-structured dynamics if immunization levels remain above 71\% for POLYMOD, 58\% for diagonal, 66\% for peak at age 5 and 86\% for peak at age 10. The peak at age 10 WAIFW matrix generally predicts long honeymoon times because of the slow aging of susceptibles into high-contact years.
 
-\begin{figure}[p]
+\begin{figure}[h]
 \centering
 \includegraphics[height=0.62\textheight]{../figures/release_examples_age_AI.pdf}
 \caption{\textbf{Post-decline outbreaks under various assumptions about age-structured transmission.} (A) Five Who-Aquires-Infection-from-Whom (WAIFW) matrices. For each matrix, the color of a cell shows contact rates of individuals between age classes i and j, $\theta_{i,j}$, relative to the maximum number of contacts for that matrix. The maximum value is indicated on each matrix in the cell which has maximum contact (blue = few contacts, yellow = many contacts). (B) Effective reproduction ratio and (C) proportion of infected individuals for the scenario when a single infected individual is introduced at the time of immunization decline; we assume $\mu = 1/80$ years\textsuperscript{-1}, $\Rn = 17$, pre-decline immunization levels are 95\%, and post-decline immunization levels are 20\%. (D) Susceptible accumulation over age and time (where the color of cell indicates the percent susceptible, relative to the entire population). White dots show instances where an age class had more than 1 infected individual in a given week. The size of the dot corresponds to the number of infections in that age class in that week. (E) Equivalence ratio on log scale, i.e., $\log(\widehat{\beta}(t))$, to track relative speed of dynamics in flat (black) versus age-structured cases. If $\log(\widehat{\beta}(t)) > 0$, dynamics are faster with age structure, and if $\log(\widehat{\beta}(t)) < 0$ dynamics are slower with age structure. Peak at age 10 results are truncated. See Figure S1 for sensitivity of results to introduction timing. Methods and Supplementary Material contain details on WAIFW construction, model simulation, and equivalence ratio.}
 \label{fig:age-structured-outbreaks}
 \end{figure}
 
-\begin{figure}[p]
+\begin{figure}[h]
 \centering
 \includegraphics[width=0.8\textwidth]{../figures/honeymoon_age_full_start95.pdf}
 \caption{\textbf{Theoretical honeymoon time predictions under five assumptions about age-structured mixing.} Theoretical honeymoon time, computed as time until $\Reff>1$, by vaccination levels after a drop in immunization. Results are shown for a population with $\mu = 1/80$ years\textsuperscript{-1}, a pathogen with $\Rn = 17$, and a pre-decline immunization of 95\%. See Figure S2 for results under higher pre-decline immunization levels.}
@@ -133,7 +130,7 @@ On the other hand, there are a number of counties with low coverage (and in some
 
 As a preliminary exploration of how likely it is that importations have not yet seeded outbreaks in many places, we extended our honeymoon theory to a simple metapopulation model where patches are equally connected and some percentage of patches experience a drop in immunization (the others remain at pre-decline immunization levels). In this case, a small degree of connectivity can increase honeymoon times, where the low immunization patches are effectively buffered by those that have not dropped Figure S3). If patches are connected such that 1\% of transmission is shared between them, honeymoon times increase by 6\%-9\% (35\%-37\% increases with 5\% shared transmission, and 70\%-76\% with 10\% shared transmission). Such dynamics could further delay outbreaks.
 
-\begin{figure}[p]
+\begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{../figures/empirical_vax_declines_v3_AI.pdf}
 \caption{\textbf{Interpreting observed vaccination coverage declines.} (A) First dose coverage of measles containing vaccine (MCV1) in six example countries, and (B) coverage of measles mumps and rubella vaccination in four example US counties. In both, consecutive declines in coverage are shown in red. (C-D) Heatmap of coverage declines in WHO countries (C) and US counties (D), where locations are classified based on the largest drop in vaccination coverage and the number of consecutive years over which the drop occurred. Sample locations are highlighted with points, and the theoretical honeymoon threshold is shown for reference when $\mu = 1/80$ years\textsuperscript{-1}, $\Rn = 17$, pre-decline immunization = 95\% and age-structured contacts follow the POLYMOD mixing matrix. (E) US counties classified by birth rate and average vaccination coverage from 2017-2024 (where data is available). Colored points represent counties with at least one measles case; the color and size of the point show cumulative cases per 10,000 population since January 1, 2025 on the log scale. Counties with no reported measles cases (and available vaccination data) are shown with open gray circles. For reference, the background heatmap shows theoretical honeymoon time predictions under the same assumptions as (C-D); contours highlight theoretical honeymoon times of 3, 5, and 7 years. Counties with the top 5\% of outbreaks (in terms of cumulative cases per 10,000 population) are labeled. WUENIC data on national immunization levels for MCV1 from \citep{WHO_UNICEF2024}, US county level MMR data from \citep{DongEtAl2025}, measles outbreak data from \citep{JHUMeaslesTracking2026}, and county level birth rates from US Census Bureau \citep{SocialExplorer2019}; see Methods for additional details about data and analysis. 10 counties with birth rates below 40 per 10,000 are not shown; there were no reported measles cases in these counties.}
@@ -162,36 +159,37 @@ Ongoing declines in childhood immunization threaten decades of public health pro
 \section{Methods}
 \label{sec:methods}
 
-\subsection{Theoretical honeymoon times}
+\subsection{Theoretical honeymoon time}
 \label{sec:methods-theoretical-honeymoon}
 
-The observed ``post-honeymoon time'' will depend both on the susceptibility in the population and the frequency and timing of importations \citep{MetcalfEtAl2020}. Here we focused exclusively on the accumulation of susceptibles, defining the theoretical honeymoon time as the time until $\Reff=\Rn S(t)$ crosses 1. We chose this definition because it represents the time after which an importation would successfully lead to an outbreak (deterministically). It also has the advantage of being analytically tractable.
+The observed ``post-honeymoon time'' will depend both on the susceptibility in the population and the frequency and timing of importations \citep{MetcalfEtAl2020}. Here we focused exclusively on the accumulation of susceptibles, defining the theoretical honeymoon time as the time until $\Reff=\Rn S(t)$ crosses 1. We chose this definition because it represents the time after which an importation would successfully lead to an outbreak (deterministically). It also has the advantage of being analytically tractable. In this section, we provide an overview of the model and honeymoon time derivation; additional details are provided in Supplementary Material Section 1. 
 
-\subsection{SIR model from epidemiological theory}
-\label{sec:methods-sir}
-
-We derived theoretical honeymoon times in the simplest case with a basic \textbf{S}usceptible-\textbf{I}nfected-\textbf{R}ecovered model. We assumed a constant population size (i.e., birth rate = death rate), where immunization occurs at birth. Although we did not explicitly include vaccine efficacy, it can be understood as reducing the effective vaccination coverage (for example, 94\% coverage with 95\% efficacy would be equivalent to approximately 90\% immunization in our model). The system of differential equations can be defined as follows:
+We derived theoretical honeymoon times in the simplest case with a basic SIR (Susceptible-Infected-Recovered) model. We assumed a constant population size with equivalent birth and death rates, where immunization occurs at birth. We defined the ``effective immunization coverage'' as the proportion of new births that are succesffully immunized, thus accounting for both vaccine coverage and efficacy. The model is defined by the following system of differential equations:
 
 \begin{align}
-\dd{S}{t} &= \mu N(1-v)-\frac{\beta SI}{N}-\mu S, \notag\\ \dd{I}{t} &= \frac{\beta SI}{N}-(\gamma-\mu)I, \notag\\ \dd{R}{t} &= \mu Nv+\gamma I-\mu R.
+\dd{S}{t} &= \mu (1-v)-\beta SI-\mu S \\ 
+\dd{I}{t} &= \beta SI-(\gamma-\mu)I \\ 
+\dd{R}{t} &= \mu v+\gamma I-\mu R
 \label{eq:sir-main-methods}
 \end{align}
 
-where $\mu$ is the birth and death rate, $v$ is the proportion of new births that are immunized, $\beta$ is the transmission rate, and $\gamma$ is the recovery rate. Going forward, we assume the total population size, $N$, is 1 and thus our system of differential equations tracks the percent of the population in each class. We can derive the accumulation of susceptible individuals when measles is locally extinct (i.e., when $I = 0$)
+\noindent
+where $\mu$ is the birth and death rate, $v$ is the effective immunization coverage, $\beta$ is the transmission rate, and $\gamma$ is the recovery rate. In this model $\vcrit = 1-1/\Rn$ is the critical immunization coverage, or the herd-immunity threshold. If $v>\vcrit$, the pathogen will go locally extinct. 
+
+We considered a population with some ``pre-decline'' effective immunization coverage, $v_0 > \vcrit$, such that measles is locally extinct. We then assumed that immunization coverage drops to some ``post-decline'' level, $v < \vcrit$, such that the pathogen can reemerge. In this case, with $v < \vcrit < v_0$, the accumulation of susceptible individuals is given by
 
 \begin{equation}
-S(t)=(1-v)+\bigl(S_0-(1-v)\bigr)e^{-\mu t}.
+S(t)=(1-v)+(v_0-v)e^{-\mu t}.
 \label{eq:susceptible-main-methods}
 \end{equation}
 
-and the time until $\Reff=\Rn S(t)=1$
+\noindent
+Then, the theoretical honeymoon time $T$, or the time until $\Reff=\Rn S(t)=1$, is 
 
 \begin{equation}
-\text{theoretical honeymoon time} =-\frac{1}{\mu}\log\!\left(\frac{1/\Rn-(1-v)}{S_0-(1-v)}\right) =-\frac{1}{\mu}\log\!\left(\frac{S^*-S_v}{S_0-S_v}\right).
+T  = \frac{1}{\mu} \log\left(\frac{v_0-v}{\vcrit-v}\right).
 \label{eq:honeymoon-time-methods}
 \end{equation}
-
-Derivations are provided in the supplementary material.
 
 \subsection{Age-structured SIR model}
 \label{sec:methods-age-structured}
