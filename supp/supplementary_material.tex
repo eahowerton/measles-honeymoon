@@ -15,6 +15,7 @@
 \renewcommand\linenumberfont{\normalfont\tiny\color{linenogray}}
 \newcommand{\commentmacro}[3]{\textcolor{#1}{\textbf{[#2: }\textsl{#3}\textbf{]}}}
 \newcommand{\david}[1]{\commentmacro{cyan}{David}{#1}}
+\newcommand{\emily}[1]{\commentmacro{magenta}{Emily}{#1}}
 \newcommand{\thickredline}{{\color{red}\bigskip\begin{center}\linethickness{2mm}\line(1,0){250}\end{center}\bigskip}}
 \newcommand{\Rn}{{\mathcal R}_0}
 \newcommand{\Reff}{{\mathcal R}_{\textrm{eff}}}
@@ -33,25 +34,48 @@
 \maketitle
 \linenumbers
 
-\david{I've introduced macros for reproduction numbers and typeset them in what has become standard notation.}
+\emily{I've rewritten the first half of the first section to define the model equations and derive the equilibria explicitly.}
 
 \section{Theoretical honeymoon time in the SIR model}
-We consider here how reductions in vaccination can lead to rebounds in disease prevalence in a SIR (Susceptible, Infected, Recovered) model. In particular, we will focus on the post-vaccination ``honeymoon", or how long it takes for the disease to rebound after vaccination starts declining. We use the term ``effective immunization coverage" throughout for the proportion successfully immunized, thereby accounting for both vaccination coverage and imperfect vaccine efficacy.
+We consider here how reductions in vaccination can lead to rebounds in disease prevalence. In particular, we will focus on the post-vaccination ``honeymoon", or how long it takes for the disease to rebound after vaccination starts declining. We use the term ``effective immunization coverage" throughout for the proportion successfully immunized, thereby accounting for both vaccination coverage and imperfect vaccine efficacy. 
 
-To begin, we will consider the simplest case where (a) a population has been under a ``pre-decline'' vaccination regime for a sufficiently long period of time to be at equilibrium, and (b) that the pathogen is locally eliminated.  Let $v_0$ be the effective immunization coverage during the period of herd immunity, and let $v$ be the effective immunization coverage after the decline begins.
+We begin with an SIR (Susceptible, Infected, Recovered) model of disease transmission. We assume that births and deaths occur at the same rate, $\mu$, and some proportion, $v$, of births are effectively immunized. We further assume that new infections occur upon contact between susceptible and infected individuals at rate $\beta$, and infected individuals recover at rate $\gamma$. The model can be defined by the following system of ordinary differential equations: 
 
-In the SIR model, we know there are two possible equilibria: 
+\begin{align}
+    \frac{dS}{dt} &= \mu (1-v) - \beta S I - \mu S \\
+    \frac{dI}{dt} &= \beta S I - (\gamma + \mu) I \\
+    \frac{dR}{dt} &= \mu v + \gamma I - \mu R
+\end{align}
+
+\noindent
+where $S$, $I$, and $R$ represent the proportions of the population that are susceptible, infected, and recovered, respectively.
+
+One way to understand the dynamics of the SIR model is through its equilibrium behavior, or the conditions under which the system does not change over time. The equilibrium conditions are given by setting the derivatives to zero, and for the $I$ compartment, we have
+
+\begin{align}
+    \frac{dI}{dt} &= \beta S I - (\gamma + \mu) I = I(\beta S - (\gamma + \mu)) = 0,
+\end{align}
+
+\noindent
+which demonstrates the existence of two equilibria: 
+
 \begin{enumerate}
-    \item disease-free equilibrium, where $S^* = v_0$ \david{No, the DFE is $1-v_0$ (assuming you're taking $S$ to mean proportion susceptible).}
-    \item endemic equilibrium, where $S^* = \frac{1}{\beta}(\mu + \gamma + \frac{\mu(\mu + \gamma)}{\sigma})$
-      \david{No, the EE for the standard SIR model is $S^* = \frac{1}{\Rn} = \frac{\gamma+\mu}{\beta}$.  The extra term does not come from the SIR model and you haven't defined $\sigma$.  It is for the SEIR model with $1/\sigma$ being the mean latent period.  Even then it is better to write $S^*=\frac{1}{\Rn}$ and $\Rn=(\frac{\beta}{\gamma+\mu})(\frac{\sigma}{\sigma+\mu})$.   It is also confusing to say there are two equilibria, but in the first case in the presence of immunity and the second case without.  I strongly suggest you actually write down the model equations before stating what the equilibria are, and derive equilibria for one clear model.}
+    \item disease-free equilibrium, where $I^* = 0$ and $S^* = 1-v$, and
+    % $I = 0$ yields $\mu (1-v) - \beta S (0) - \mu S = 0$ which implies $\mu ((1-v) - S) = 0$ or $S = (1-v)$
+    \item endemic equilibrium, where $I^* = \frac{\mu}{(\gamma + \mu)} \big((1-v) - 1/\Rn\big) > 0$ and $S^* = \frac{\gamma + \mu}{\beta} = 1/\Rn$. This equilibrium point only exists and is positive when $v < 1-1/\Rn$. \emily{the exact equation for $I^*$ in this case is less relevant for our purposes, but I've included it here for completeness}
+    %  subtituting $S^* = \frac{\gamma + \mu}{\beta}$ into the equation for $dS/dt = 0$ yields 
+    % \begin{align}
+    %     0 = \mu (1-v) - \beta (\frac{\gamma + \mu}{\beta}) I^* - \mu (\frac{\gamma + \mu}{\beta}) \\
+    %     (\gamma + \mu) I^* = \mu (1-v) - \mu (\frac{\gamma + \mu}{\beta}) \\
+    %     I^* = \frac{\mu}{(\gamma + \mu)} \big((1-v) - 1/\Rn\big)
+    % \end{align}
 \end{enumerate}
 
-Here, we consider only the disease-free case in which the pre-decline effective immunization coverage is above the herd-immunity threshold, $v_0>1-1/\Rn$, equivalently $S^*=1-v_0<1/\Rn$; otherwise there is no positive honeymoon period. We are interested in the duration of the honeymoon period, which we hypothesize will depend on a number of factors including the $\Rn$ of the pathogen, the equilibrium proportion susceptible $S^*$, the birth rate $\mu$, the post-decline effective immunization coverage $v$, and the timing of importations. Because the timing and establishment of importations cannot be predicted by this deterministic model, we define the theoretical honeymoon time as the time until $\Reff=\Rn S(t)$ crosses 1. This provides a lower bound on the actual rebound time, because rebound additionally requires an importation to arrive and establish.
+Within this framework, we imagine a population with some ``pre-decline'' effective immunization coverage, $v_0$, that experiences an instantaneous drop in coverage to $v$. We consider only the disease-free case in which the pre-decline effective immunization coverage is above the herd-immunity threshold, $v_0>1-1/\Rn$, equivalently $S^*=1-v_0<1/\Rn$; otherwise there is no positive honeymoon period. \emily{flagging that we haven't formally introduced the definition of honeymoon period yet, but perhaps safe to say the reader has been through the main text and has the general idea} 
 
-\david{I did some editing above, but I suggest a wholesale replacement from here until the thick red line.  Between the thick red line and the start of the age-structured model section, I've retained your former text that I suggest be deleted.}
+We hypothesize that the duration of the honeymoon period, or informally, the time until the first rebound outbreak, will depend on a number of factors including the basic reproduction number of the pathogen $\Rn$, the equilibrium proportion susceptible $S^*$, the birth rate $\mu$, the post-decline effective immunization coverage $v$, and the timing of importations. Because the timing and establishment of importations cannot be predicted by this deterministic model, we define the theoretical honeymoon time as the time until $\Reff=\Rn S(t)$ crosses 1. This provides a lower bound on the actual rebound time, because rebound additionally requires an importation to arrive and establish.
 
-We can calculate analytically the time at which $\Reff$ crosses 1 under the assumptions of local extinction ($I=0$), constant post-decline effective immunization coverage $v$, and a constant population scaled to 1.  Births and deaths then occur at the same per-capita rate $\mu$, and the proportion susceptible satisfies
+We can calculate analytically the time at which $\Reff$ crosses 1 under the assumptions of local extinction ($I=0$), constant post-decline effective immunization coverage $v$, and a constant population scaled to 1. The proportion susceptible satisfies
 \begin{equation}
     \frac{dS}{dt}=\mu(1-v)-\mu S
     =\mu\bigl[(1-v)-S\bigr].
@@ -91,62 +115,6 @@ Equivalently, the pre- and post-decline values of effective immunization coverag
 For fixed $T$ and $\mu$, Equation~\eqref{eq:equivalent-immunization-coverage} defines a straight line in the plane whose horizontal and vertical coordinates are the post- and pre-decline effective immunization coverages, $v$ and $v_0$, respectively.  The line has slope $1-e^{\mu T}<0$ and vertical intercept $e^{\mu T}\vcrit$.  Consequently, combinations of $v$ and $v_0$ that produce the same theoretical honeymoon time lie along straight lines.  This explains the linear contours in the heatmap of theoretical honeymoon time in the main text.
 
 \david{Heatmap file: \path{figures/honeymoon_SIR_with_linear_heatmap.pdf}.  I have referred to it descriptively because the main manuscript is not in \LaTeX\ and its figure number may change.}
-
-\thickredline
-
-We can calculate analytically the time it takes for $\Reff$ to cross 1, under assumptions of local extinction (i.e., $I = 0$) and a constant post-decline immunization rate, $v$. In this case, we have a differential equation for the number of susceptibles, $S$, which we can solve using the following steps:
-
-\begin{align*}
-    \frac{dS}{dt} &= \mu (1-v) - \mu S \\
-    e^{\mu t}\Big(\frac{dS}{dt} + \mu S \Big) &= e^{\mu t} \mu (1-v) \\
-    \int e^{\mu t}\Big(\frac{dS}{dt} + \mu S \Big) dt &= \int e^{\mu t} \mu (1-v) dt \\
-    \int e^{\mu t}\frac{dS}{dt} + e^{\mu t}\mu S dt &= \int e^{\mu t} \mu (1-v) dt \\
-    e^{\mu t} S &= (1-v) e^{\mu t} + C \\
-    S(t) &= (1-v) + C e^{-\mu t}
-\end{align*}
-
-\noindent
-and solving $S_0 = (1-v) + C e^{-\mu \cdot 0}$ gives us $C = S_0 - (1-v)$.
-Thus, we have:
-
-$$
-S(t) = (1-v) + (S_0 - (1-v)) e^{-\mu t}
-$$
-
-\noindent
-We can then find the time $t$ at which $\Reff = \Rn S(t) = 1$, which yields
-
-% \begin{align}
-%     (1-v) + (S_0 - (1-v)) e^{-\mu t} &= 1/\Rn  \\
-%     (S_0 - (1-v))e^{-\mu t}  &= (1/\Rn - (1-v)) \\\
-%     e^{-\mu t}  &= \frac{1/\Rn - (1-v)}{S_0 - (1-v)} \\
-% \end{align}
-$$
-t = \frac{-1}{\mu} \log \Big(\frac{1/\Rn - (1-v)}{S_0 - (1-v)}\Big)
-$$
-
-\noindent
-We can also rewrite this equation to show us the relationship between pre- and post-decline immunization levels that yield equivalent honeymoon periods. When vaccination rates are above the herd immunity threshold, $S_0 = 1-v_0$ is the pre-drop vaccination coverage, so 
-
-% \begin{align}
-%     t &= \frac{-1}{\mu} \log \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big) \\
-%     - t \mu &= \log \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big) \\
-%     e^{- t \mu} &= \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big) \\
-%     (1-v_0) - (1-v) &= e^{t \mu} (1/\Rn - (1-v)) \\
-%     v - v_0 &= e^{t \mu} (v - 1 + 1/\Rn) \\
-%     v_0 &= v - e^{t \mu} (v - 1 + 1/\Rn) \\
-%     v_0 &= v(1 - e^{t \mu}) + e^{t \mu} (1 - 1/\Rn)
-% \end{align}
-
-$$
-t = \frac{-1}{\mu} \log \Big(\frac{1/\Rn - (1-v)}{(1-v_0) - (1-v)}\Big)
-$$
-
-\noindent
-which can be simplified to
-$$
-v_0 = v(1 - e^{t \mu}) + e^{t \mu} (1 - 1/\Rn).
-$$
 
 \section{Age-structured model}
 Our age-structured model defines a discrete set of $A$ age classes.  Transmission between individuals of different age classes is governed by a who-acquires-infection-from-whom (WAIFW) matrix, $\theta_{i,j}$, where $i$ and $j$ index age classes. The full system of ordinary differential equations is as follows:
