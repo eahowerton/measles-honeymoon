@@ -36,8 +36,10 @@ stable_age = findStableStruct(age_classes, mort, fert, 1/52)$stable.age
 scalars = data.frame(waifw_id = 1:5, scalar = NA, diff = NA)
 for(i in 1:length(waifw)){
   o = optimize(f = find_scalar, tol = 1e-8, interval = c(0, 100), R0 = R0,
-               waifw = waifw[[i]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"],  mu = paras["mu"], N = 1)
-  print(get_Rt(waifw[[i]], stable_age, paras["beta0"]*o$minimum, paras["gamma"],  mu = paras["mu"], N = 1))
+               waifw = waifw[[i]], S = stable_age, beta0 = paras["beta0"], 
+               gamma = paras["gamma"],  mu = paras["mu"], N = 1, age_classes = age_classes)
+  print(get_Rt(waifw[[i]], stable_age, paras["beta0"]*o$minimum, paras["gamma"],  
+               mu = paras["mu"], N = 1, age_classes = age_classes))
   scalars[i, 2:3] = c(o$minimum, o$objective)
 }
 
@@ -98,7 +100,8 @@ Rt_long = release_sim_df_long %>%
   summarize(Rt = get_Rt(waifw = waifw[[waifw_id]], S = value, 
                         beta0 = paras_all[[waifw_id]]["beta0"], 
                         gamma = paras["gamma"], mu = paras["mu"], 
-                        N = paras["N"]), .by = c("time", "waifw_id"))
+                        N = paras["N"], age_classes = age_classes), 
+            .by = c("time", "waifw_id"))
 
 max_contacts = lapply(waifw, melt) %>%
   bind_rows(.id = "waifw_id") %>%
@@ -160,10 +163,11 @@ pt2 = unity_beta_long %>%
   filter(variable == "BH") %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
   ggplot(aes(x = time, y = unity_beta, color = as.factor(waifw_id))) + 
-  geom_text(data = data.frame(y = c(1e3, 1/1e3), x = c(10, 10), vjust = c(1, 0),
+  geom_text(data = data.frame(y = c(1e2, 1/1e2), x = c(10, 10), vjust = c(1, 0),
                               waifw_id = 1,
                               lab = c("\nspeeding up\nwith age structure", "slowing down\nwith age structure\n")),
-            aes(x = x, y = y, label = lab, vjust = vjust), hjust = 1, color = "black", size = 1.9, alpha = 1) +
+            aes(x = x, y = y, label = lab, vjust = vjust), 
+            hjust = 1, color = "black", size = 1.9, alpha = 1, lineheight = 0.8) +
   geom_line(data = unity_beta_long %>%
               filter(variable == "BH", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") + 
   geom_line(aes(linetype = variable), linewidth = 0.5) + 
@@ -210,7 +214,9 @@ pt4 = release_sim_df_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
   guides(size = FALSE) + 
   scale_fill_viridis_c(option = "inferno", name = "% susceptible", labels = scales::percent) + 
   scale_size_continuous(range = c(0,1.25)) + 
-  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "years since immunization decline") + 
+  scale_x_continuous(expand = c(0,0), breaks = seq(0,10,2), 
+                     labels = c(" 0", "2", "4", "6", "8", "10  "),
+                     name = "years since immunization decline") + 
   scale_y_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "age (year)") + 
   theme_gray(base_size = 7) +
   theme(#legend.position = "none",

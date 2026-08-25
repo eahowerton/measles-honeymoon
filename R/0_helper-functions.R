@@ -139,11 +139,24 @@ findStableStruct <- function(age.classes=c(1:60,seq(72,120,by=12),seq(180,600,by
 #### NEXT GENERATION MATRIX FUNCTIONS ------------------------------------------
 #' age-specific R0/Re calculations
 #' for R0 pass DFE (stable age distribution) to S
-#' N is a vector of age-specific population sizes
-get_Rt <- function(waifw, S, beta0, gamma, mu, N){
+#' for Re pass S(t)
+#' @param waifw who-acquires-infection-from-whom matrix
+#' @param S vector of population susceptible in each age class. (s.t. S/N is a proportion)
+#' @param beta0 transmission rate
+#' @param gamma recovery rate
+#' @param mu birth/death rate
+#' @param age_classes vector of upper bound for each age class
+#' @param N population size
+get_Rt <- function(waifw, S, beta0, gamma, mu, age_classes, N){
   S = S/N
-  # if(any(length(S) != dim(waifw))){browser()}
-  NGM <- beta0 / (gamma + mu) * waifw %*% diag(S)
+  A = length(age_classes)
+  alpha = 1/diff(c(0,age_classes))
+  alpha[A] = 0
+  V_mat = diag(gamma + mu + alpha)
+  indx = seq(2, A^2, by = A +1) # get indices of first sub-diagonal 
+  V_mat[indx] = -alpha[-length(alpha)]
+  F_mat = diag(S) %*% (beta0 * waifw)
+  NGM <- F_mat %*% solve(V_mat)
   eigenvalues <- eigen(NGM)$values
   R0 <- max(Re(eigenvalues))
   return(R0)
@@ -187,9 +200,8 @@ get_Rt_npatch_dropvax = function(p, S_drop, start_vax, beta0, gamma, mu, c){
 
 #### FIND SCALARS --------------------------------------------------------------
 #' find scalar on WAIFW matrix to achieve a given R0
-find_scalar = function(s, R0, waifw, S, beta0, gamma, mu, N){
-  # print(paste0("s: ", s, " R0: ", get_Rt(waifw, S, beta0*s, gamma, N)))
-  diff = get_Rt(waifw, S, beta0*s, gamma, mu, N) - R0
+find_scalar = function(s, R0, waifw, S, beta0, gamma, mu, age_classes, N){
+  diff = get_Rt(waifw, S, beta0*s, gamma, mu, age_classes, N) - R0
   return(abs(diff))
 }
 

@@ -43,8 +43,10 @@ for(j in 1:length(tst_mu)){
   i = 5
   # for(i in 5:length(waifw)){
   o = optimize(f = find_scalar, tol = 1e-8, interval = c(0, 100), R0 = R0,
-               waifw = waifw[[5]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"],  mu = tmp_mu, N = 1)
-  print(get_Rt(waifw[[5]], stable_age, paras["beta0"]*o$minimum, paras["gamma"],  mu = tmp_mu, N = 1))
+               waifw = waifw[[5]], S = stable_age, beta0 = paras["beta0"], gamma = paras["gamma"],
+               mu = tmp_mu, age_classes = age_classes, N = 1)
+  print(get_Rt(waifw[[5]], stable_age, paras["beta0"]*o$minimum, paras["gamma"],
+               mu = tmp_mu, age_classes = age_classes, N = 1))
   scalars_tmp[1, 2:3] = c(o$minimum, o$objective)
   # scalars_tmp[i, 2:3] = c(o$minimum, o$objective)
   # }
@@ -108,7 +110,8 @@ susc_after_release_long_full = bind_rows(susc_after_release_full, .id = "mu_id")
 # POLYMOD ONLY
 rt_after_release_full = susc_after_release_long_full %>% 
   filter(variable == "S") %>%
-  summarize(Rt = get_Rt(waifw = waifw[[5]], S = value, beta0 = beta0, gamma = gamma, N = N, mu = mu), 
+  summarize(Rt = get_Rt(waifw = waifw[[5]], S = value, beta0 = beta0, gamma = gamma,
+                        N = N, age_classes = age_classes, mu = mu), 
             .by = c("time", "start_vax", "release_vax", "mu_id", "mu"))
 
 honeymoon_period = rt_after_release_full %>%

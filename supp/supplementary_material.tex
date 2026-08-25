@@ -6,6 +6,8 @@
 \usepackage{geometry}
 \usepackage{lineno}
 \usepackage{url}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
 \geometry{a4paper, margin=1in}
 
 %%%%%%%%%%%%%%%
@@ -116,11 +118,11 @@ For fixed $T$ and $\mu$, Equation~\eqref{eq:equivalent-immunization-coverage} de
 \david{Heatmap file: \path{figures/honeymoon_SIR_with_linear_heatmap.pdf}.  I have referred to it descriptively because the main manuscript is not in \LaTeX\ and its figure number may change.}
 
 \section{Age-structured model}
-
-\emily{Still outstanding: fix the error in the NGM calculation}
-
 \label{sec:age-structure}
-Our age-structured model defines a discrete set of $A$ age classes.  Transmission between individuals of different age classes is governed by a who-acquires-infection-from-whom (WAIFW) matrix, $\theta_{i,j}$, where $i$ and $j$ index age classes. The full system of ordinary differential equations is as follows:
+
+\emily{This section has been updated and all code/figures have been rerun. Minor numerical differences and no qualitative changes.}
+
+We also test honeymoon times under various assumptions about age-structured contact patterns. Our age-structured model defines a discrete set of $A$ age classes.  Transmission between individuals of different age classes is governed by a who-acquires-infection-from-whom (WAIFW) matrix, $\theta_{i,j}$, where $i$ and $j$ index age classes. The full system of ordinary differential equations governing the proportion of individuals in each age class and disease state is as follows:
 
 \begin{align}
     % susceptible 
@@ -135,41 +137,65 @@ Our age-structured model defines a discrete set of $A$ age classes.  Transmissio
 \end{align}
 
 \noindent
-where $\alpha_i$ is the rate of aging out of age class $i$, $\mu$ is the birth and death rate, $\gamma$ is the recovery rate, and $v$ is the effective immunization coverage at birth. This model assumes a total population size of 1, and compartments represent the proportion of individuals in each age class.
+where $\mu$ is the birth and death rate, $\alpha_i$ is the rate of aging out of age class $i$ which is inversely proportional to its size, $\gamma$ is the recovery rate, and $v$ is the effective immunization coverage at birth. There is no aging out of the final age class  to ensure a constant population scaled to one (i.e., $\alpha_A = 0$).
 
-We can calculate the basic reproduction number, $\Rn$, and the effective reproduction number, $\Reff$, for this model using the Next Generation Matrix method. In this case, the next generation matrix, $K$, is given by
+To calculate $\Rn$ in the age-structured model, we use the Next Generation Matrix (NGM) method \citep{DiekmannEtAl1990}. To do so, we follow the steps from Bj\o{}rnstad (2018) \cite{Bjornstad2018}:
+\begin{enumerate}
+    \item Define the infected states, $\mathbf{X} = (I_1, I_2, ..., I_A)$
+    \item Define the new infection terms, $\mathcal{F}(\mathbf{X}) = \Big[ \sum_{j=1}^{A} \theta_{i,j} S_i I_j  \Big]$ for ages $i = 1, 2, ..., A$
+    \item Define all losses out of infected states, 
+    \begin{align*}
+        \mathcal{V}^-(\mathbf{X}) = \begin{bmatrix}
+        (\gamma + \mu + \alpha_1) I_1 \\
+        \vdots \\
+        (\gamma + \mu + \alpha_{A-1}) I_{A-1} \\
+        (\gamma + \mu) I_A
+        \end{bmatrix}
+    \end{align*}
 
-\begin{align}
-    K = \frac{1}{\gamma + \mu} \begin{bmatrix}
-     \theta_{1,1} S_1(t) & \theta_{1,2} S_1(t) & \cdots & \theta_{1,A} S_1(t) \\
-    \theta_{2,1} S_2(t) & \theta_{2,2} S_2(t) & \cdots & \theta_{2,A} S_2(t) \\
+    \item Define all gained transfers between infected states, 
+    \begin{align*}
+        \mathcal{V}^+(\mathbf{X}) = \begin{bmatrix}
+        0 \\
+        \alpha_1 I_1 \\
+        \vdots \\
+        \alpha_{A-1} I_{A-1} \\
+        \end{bmatrix}
+    \end{align*}
+    \item Define the change in infected states,
+    \begin{align*}
+        \mathcal{V}(\mathbf{X}) = \mathcal{V}^-(\mathbf{X}) - \mathcal{V}^+(\mathbf{X}) = \begin{bmatrix}
+        (\gamma + \mu + \alpha_1) I_1 \\
+        (\gamma + \mu + \alpha_2) I_2 - \alpha_1 I_1 \\
+        \vdots \\
+        (\gamma + \mu + \alpha_{A-1}) I_{A-1} - \alpha_{A-2} I_{A-2} \\
+        (\gamma + \mu) I_A - \alpha_{A-1} I_{A-1} \\
+        \end{bmatrix}
+    \end{align*}
+    \item Compute the Jacobians of $\mathcal{F}$ and $\mathcal{V}$. The Jacobian of $\mathcal{V}$ is
+    $$
+    \mathbf{V} = \Big[\frac{\partial \mathcal{V}_i}{\partial X_j}\Big] =  \begin{bmatrix}
+     \gamma + \mu + \alpha_1 & 0 & 0 & \cdots & 0 & 0\\
+     -\alpha_1 & \gamma + \mu + \alpha_2 & 0 & \cdots & 0 & 0\\
+     0 & -\alpha_2 & \gamma + \mu + \alpha_3 & \cdots & 0 & 0\\
+    \vdots & \vdots & \ddots & \ddots & \vdots & \vdots \\
+    % 0 & \vdots & -\alpha_{A-3} & \gamma + \mu + \alpha_{A-2} & 0 & 0 \\
+    0 & 0 & \cdots & -\alpha_{A-2} & \gamma + \mu + \alpha_{A-1} & 0 \\
+    0 & 0 & \cdots & 0 & -\alpha_{A-1} & \gamma + \mu \\
+    \end{bmatrix}
+    $$
+      
+    and the Jacobian of $\mathcal{F}$ is
+    $$
+    \mathbf{F} = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] =  \begin{bmatrix}
+     \theta_{1,1} S_1 & \theta_{1,2} S_1 & \cdots & \theta_{1,A} S_1 \\
+    \theta_{2,1} S_2 & \theta_{2,2} S_2 & \cdots & \theta_{2,A} S_2 \\
     \vdots & \vdots & \ddots & \vdots \\
-    \theta_{A,1} S_A(t) & \theta_{A,2} S_A(t) & \cdots & \theta_{A,A} S_A(t) \\
-    \end{bmatrix} = \frac{1}{\gamma + \mu} \theta \overrightarrow{S(t)},
-\end{align}
-
-\noindent
-for which we calculate the dominant eigenvalues numerically. 
-
-% To calculate $\Rn$ in the age-structured model, we use the Next Generation Matrix (NGM) method outlined in Diekmann et al 1990. To do so, we follow the steps from the Bjornstad book:
-% \begin{enumerate}
-%     \item Define the infected states, $X = (I_1, I_2, ..., I_n)$ for ages $i = 1, 2, ..., n$
-%     \item Define the new infection terms, $\mathcal{F}(X) = \Big[ \sum_{j=1}^{n} \theta_{i,j} I_j S_i  \Big]$ for ages $i = 1, 2, ..., n$
-%     \item Define all losses out of infected states, $\mathcal{V}^-(X) = \Big[ (\gamma + \mu) I_i \Big]$ repeated for all ages.
-%     \item Define all gained transfers between infected states, $\mathcal{V}^+(X) = \Big[ 0 \Big]$ repeated for all ages.
-%     \item Define the total losses out of infected states, $\mathcal{V}(X) = \mathcal{V}^-(X) - \mathcal{V}^+(X) = \Big[ (\gamma + \mu) \Big]$.
-%     \item Compute the jacobians of $F$ and $V$. We do not evaluate at the disease-free equilibrium, because we will also use this  evaluated at to calculate $R_t$. The jacobian of $V$, $v = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big]$, will be $v = (\gamma + \mu)$ along the diagonal and zero elsewhere.  
-%     The jacobian of $F$ is
-%     $$
-%     f = \Big[\frac{\partial \mathcal{F}_i}{\partial X_j}\Big] =  \begin{bmatrix}
-%      \theta_{1,1} S_1 & \theta_{1,2} S_1 & \cdots & \theta_{1,n} S_1 \\
-%     \theta_{2,1} S_2 & \theta_{2,2} S_2 & \cdots & \theta_{2,n} S_2 \\
-%     \vdots & \vdots & \ddots & \vdots \\
-%     \theta_{n,1} S_n & \theta_{n,2} S_n & \cdots & \theta_{n,n} S_n \\
-%     \end{bmatrix}
-%     $$
-%     \item Compute the next generation matrix, $K = f v^{-1}$. Because $v$ is diagnoal, then $v^{-1}$ is another diagonal matrices with elements $1/(\gamma + \mu)$. Then, $\Rn$ is the largest eigenvalue of $K$, evaluated at the disease-free equilibrium (or with $S(t)$ for $R_t$).
-% \end{enumerate}
+    \theta_{A,1} S_A & \theta_{A,2} S_A & \cdots & \theta_{A,A} S_A \\
+    \end{bmatrix}
+    $$
+    \item Then, $\Rn$ is the dominant eigenvalue of the next generation matrix, $\mathbf{K} = \mathbf{F} \mathbf{V}^{-1}$ evaluated at the disease-free equilibrium for a particular vaccination level and assuming a stable age distribution. Similarly, $\Reff(t)$ is the dominant eigenvalue evaluated at time $t$. We compute these values numerically.
+\end{enumerate}
 
 \section{The equivalence ratio}
 \emily{I've removed the ``unity'' terminology, as it doesn't seem necessary. The only reason to keep it would be that ``unity calculation" is how Ottar describes it in his book, which I think is the (only? or) primary reference/derivation. ``Equivalence ratio'' is the term I coined for the slightly modified version used in the main text (now described in detail below), but I'm open to other names.}
@@ -178,8 +204,8 @@ The dynamics of the age-structured model can be understood in relation to a mode
 
 \begin{equation}
 \begin{aligned}
-    \text{age-structured infections} &=  \sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t) \\
-    &= \hat{\beta}(t)\sum_{i=1}^{n} S_i(t) \sum_{j=1}^{n} I_j(t) \\
+    \text{age-structured infections} &=  \sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t) \\
+    &= \hat{\beta}(t)\sum_{i=1}^{A} S_i(t) \sum_{j=1}^{A} I_j(t) \\
     &= \text{homogeneous infections}
 \end{aligned}
 \label{eq:derive-unity-beta-simple}
@@ -189,7 +215,7 @@ The dynamics of the age-structured model can be understood in relation to a mode
 given the time-varying transmission rate, $\hat{\beta}(t)$, defined as 
 
 \begin{align}
-\hat{\beta}(t) = \frac{\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t)}{\sum_{i=1}^{n}S_i(t)\sum_{j=1}^{n}I_j(t)}.
+\hat{\beta}(t) = \frac{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}{\sum_{i=1}^{A}S_i(t)\sum_{j=1}^{A}I_j(t)}.
 \label{eq:unity-beta-simple}
 \end{align} 
 
@@ -202,9 +228,9 @@ given the time-varying transmission rate, $\hat{\beta}(t)$, defined as
 In the main text, however, we compared dynamics under structured WAIFW mixing matrices to a flat WAIFW matrix reflective of homogeneous mixing. Let $\theta$ and $\theta^{\text{flat}}$ be the WAIFW matrices that define the transmission dynamics we wish to compare. We choose $\theta^{\text{flat}}_{i,j} = c$ for all $i,j$ such that both models have the same basic reproduction number. Similar to Equation~\eqref{eq:derive-unity-beta-simple}, we have
 \begin{equation}
 \begin{aligned}
-    \text{age-structured infections} &= \sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t) \\
-    \text{flat WAIFW infections} & =\sum_{i=1}^{n}\sum_{j=1}^{n} \theta^{\text{flat}}_{i,j} S^{\text{flat}}_i(t) I^{\text{flat}}_j(t) \\ 
-    &= c \sum_{i=1}^{n} S^{\text{flat}}_i(t) \sum_{j=1}^{n} I^{\text{flat}}_j(t)
+    \text{age-structured infections} &= \sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t) \\
+    \text{flat WAIFW infections} & =\sum_{i=1}^{A}\sum_{j=1}^{A} \theta^{\text{flat}}_{i,j} S^{\text{flat}}_i(t) I^{\text{flat}}_j(t) \\ 
+    &= c \sum_{i=1}^{A} S^{\text{flat}}_i(t) \sum_{j=1}^{A} I^{\text{flat}}_j(t)
 \end{aligned}
 \end{equation}
 
@@ -212,7 +238,7 @@ In the main text, however, we compared dynamics under structured WAIFW mixing ma
 which we can use to define an equivalence ratio, $k(t)$, as
 
 \begin{align}
-k(t) = \frac{\sum_{i=1}^{n}\sum_{j=1}^{n} \theta_{i,j} S_i(t) I_j(t)}{c \sum_{i=1}^{n}S^{\text{flat}}_i(t)\sum_{j=1}^{n}I^{\text{flat}}_j(t)}
+k(t) = \frac{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}{c \sum_{i=1}^{A}S^{\text{flat}}_i(t)\sum_{j=1}^{A}I^{\text{flat}}_j(t)}
 \label{eq:equivalence-ratio}
 \end{align}
 
@@ -269,5 +295,10 @@ where $\overrightarrow{S(t)}$ is the number of susceptibles in each patch at tim
     \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until Re > 1, by post-decline effective immunization coverage when drops occur in 10\% of patches among an equally connected network. Line color shows connectivity between patches (where 0.05 indicates 5\% of transmission is shared between patches, or $c$ above), and the points show equivalence between a model with no connectivity and a model where 10\% of transmission is shared between patches. (B) Sensitivity of results to the percent of patches in which effective immunization coverage declines, or $\rho$ above. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and pre-decline effective immunization coverage of 95\%. }
 \end{figure}
 
+\begingroup
+\small
+\bibliographystyle{../ms/measles_honeymoon}
+\bibliography{../ms/measles_honeymoon}
+\endgroup
 
 \end{document}
