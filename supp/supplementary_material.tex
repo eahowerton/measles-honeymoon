@@ -139,7 +139,7 @@ We also test honeymoon times under various assumptions about age-structured cont
 \noindent
 where $\mu$ is the birth and death rate, $\alpha_i$ is the rate of aging out of age class $i$ which is inversely proportional to its size, $\gamma$ is the recovery rate, and $v$ is the effective immunization coverage at birth. There is no aging out of the final age class  to ensure a constant population scaled to one (i.e., $\alpha_A = 0$).
 
-To calculate $\Rn$ in the age-structured model, we use the Next Generation Matrix (NGM) method \citep{DiekmannEtAl1990}. To do so, we follow the steps from Bj\o{}rnstad (2018) \cite{Bjornstad2018}:
+To calculate $\Rn$ in the age-structured model, we use the Next Generation Matrix method \citep{DiekmannEtAl1990}. To do so, we follow the steps from Bj\o{}rnstad (2018) \cite{Bjornstad2018}:
 \begin{enumerate}
     \item Define the infected states, $\mathbf{X} = (I_1, I_2, ..., I_A)$
     \item Define the new infection terms, $\mathcal{F}(\mathbf{X}) = \Big[ \sum_{j=1}^{A} \theta_{i,j} S_i I_j  \Big]$ for ages $i = 1, 2, ..., A$
@@ -251,7 +251,7 @@ This ratio can be interpreted as the ratio of the number of new infections in th
 
 \section{Metapopulation model}
 
-We consider a metapopulation model with $P$ identical patches that are assumed to be equally connected, such that $c\%$ of transmission arises from cross-patch contact. The model can be defined as 
+We consider a simple metapopulation model with $P$ patches that are assumed to be equally connected, such that $c$ is the proportion of contacts that occur within a patch and $1-c$ is the proportion of contacts that occur between patches. These between-patch contacts are assumed to be distributed uniformly across the remaining $P-1$ patches, and there is no permanent migration between patches. Patches are assumed to be identical except for a patch-specific effective immunization coverage, $v_p$. The model is defined by the following system of ordinary differential equations:
 
 \begin{align}
     \frac{dS_p}{dt} &= \mu (1-v_p) - \beta \sum_{q=1}^{P} C_{p,q} S_p I_q - \mu S_p \\
@@ -260,11 +260,41 @@ We consider a metapopulation model with $P$ identical patches that are assumed t
 \end{align}
 
 \noindent
-where $C_{p,q}$ is the connectivity matrix, which has $1-c$ along the diagonal and $c/(P-1)$ elsewhere. Analogous to the age-structured case, the next generation matrix is given by 
-$$
-    K = \frac{\beta}{\gamma + \mu} C \overrightarrow{S(t)},
-$$
-where $\overrightarrow{S(t)}$ is the number of susceptibles in each patch at time $t$. We specify effective immunization coverage to decline in $\rho \%$ of these patches while the others remain at pre-decline coverage.
+where $\mathbf{C}$ is the connectivity matrix, with $C_{p,p} = c$ for all $p = 1, \cdots, P$ and $C_{p,q} = (1-c)/(P-1)$ for $p \neq q$. Again, we use the Next Generation Matrix method \citep{DiekmannEtAl1990} to calculate $\Rn$ following the steps from Bj\o{}rnstad (2018) \cite{Bjornstad2018}:
+\begin{enumerate}
+    \item Define the infected states, $\mathbf{X} = (I_1, I_2, ..., I_P)$
+    \item Define the new infection terms, $\mathcal{F}(\mathbf{X}) = \Big[ \beta \sum_{q=1}^{P} C_{p,q} S_p I_q  \Big]$ for patches $p = 1, 2, ..., P$
+    \item Define all losses out of infected states, 
+    \begin{align*}
+        \mathcal{V}^-(\mathbf{X}) = \begin{bmatrix}
+        (\gamma + \mu ) I_1 \\
+        \vdots \\
+        (\gamma + \mu) I_P
+        \end{bmatrix}
+    \end{align*}
+
+    \item Define all gained transfers between infected states, $\mathcal{V}^+(\mathbf{X}) = 0$
+    \item Define the change in infected states,
+    \begin{align*}
+        \mathcal{V}(\mathbf{X}) = \mathcal{V}^-(\mathbf{X}) - \mathcal{V}^+(\mathbf{X}) = \begin{bmatrix}
+        (\gamma + \mu) I_1 \\
+        \vdots \\
+        (\gamma + \mu) I_P \\
+        \end{bmatrix}
+    \end{align*}
+    \item Compute the Jacobians of $\mathcal{F}$ and $\mathcal{V}$. The Jacobian of $\mathcal{V}$ is a diagonal matrix, $\mathbf{V} = \text{diag}(\gamma + \mu)$, and thus the inverse $\mathbf{V}^{-1} = \text{diag}\left(\frac{1}{\gamma + \mu}\right)$. The Jacobian of $\mathcal{F}$ is
+
+    $$
+    \mathbf{F} = \Big[\frac{\partial \mathcal{F}_p}{\partial X_q}\Big] = \beta \begin{bmatrix}
+     C_{1,1} S_1 & C_{1,2} S_1 & \cdots & C_{1,P} S_1 \\
+    C_{2,1} S_2 & C_{2,2} S_2 & \cdots & C_{2,P} S_2 \\
+    \vdots & \vdots & \ddots & \vdots \\
+    C_{P,1} S_P & C_{P,2} S_P & \cdots & C_{P,P} S_P \\
+    \end{bmatrix}
+    $$
+    \item This yields the next generation matrix, $\mathbf{K} = \mathbf{F} \mathbf{V}^{-1} = \frac{\beta}{\gamma + \mu} \text{diag}(\mathbf{S}) \mathbf{C}$ where $\mathbf{S} = (S_1, S_2, ..., S_P)$. We evaluate $\mathbf{K}$ at the disease-free equilibrium or at time $t$ and calculate the dominant eigenvalue numerically to obtain $\Rn$ and $\Reff$, respectively.
+\end{enumerate}
+
 
 \pagebreak
 
@@ -292,8 +322,10 @@ where $\overrightarrow{S(t)}$ is the number of susceptibles in each patch at tim
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{connectivity_fig.pdf}
-    \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until Re > 1, by post-decline effective immunization coverage when drops occur in 10\% of patches among an equally connected network. Line color shows connectivity between patches (where 0.05 indicates 5\% of transmission is shared between patches, or $c$ above), and the points show equivalence between a model with no connectivity and a model where 10\% of transmission is shared between patches. (B) Sensitivity of results to the percent of patches in which effective immunization coverage declines, or $\rho$ above. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and pre-decline effective immunization coverage of 95\%. }
+    \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until $\Reff > 1$, by post-decline effective immunization coverage when drops occur in 10\% of patches among an equally connected network. Line color shows different connectivity scenarios, modeled by the proportion of contacts that occur within the home patch, and the points show equivalence between a model with no connectivity (i.e., 100\% of contacts occuring within the home patch) and a model where 90\% of contacts occur wtihin the home patch. (B) Sensitivity of results to the percent of patches in which effective immunization coverage declines compared to the no connectivity scenario (black). Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and pre-decline effective immunization coverage of 95\%. }
 \end{figure}
+
+\clearpage
 
 \begingroup
 \small

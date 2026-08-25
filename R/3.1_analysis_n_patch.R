@@ -117,10 +117,10 @@ horiz_seg = honeymoon_period %>%
 p_labs =  paste0("coverage decrease in ", 1/tst_p*100, "% of patches")
 names(p_labs) = tst_p
 
-c_labs = paste("connectivity:", c_tst)
+c_labs = paste("proportion contacts within patch:", c_tst)
 names(c_labs) = c_tst
 
-p1 = ggplot(data = honeymoon_period %>% filter(p == 10), aes(x = new_vax, y = time, color = as.factor(1-c))) +
+p1 = ggplot(data = honeymoon_period %>% filter(p == 10), aes(x = new_vax, y = time, color = as.factor(c))) +
   geom_line(size = 0.5) +
   geom_segment(data = vert_seg, aes(x = new_vax, xend = new_vax, y = c100, yend = c90),
                color = "black", linetype = "dotted") +
@@ -130,7 +130,8 @@ p1 = ggplot(data = honeymoon_period %>% filter(p == 10), aes(x = new_vax, y = ti
                filter(new_vax %in% ex_xs, c %in% c(0.9, 1), p == 10), show.legend = FALSE) +
   geom_point(data = horiz_seg, aes(x = new_x, y = time), color = "black", show.legend = FALSE) +
   # facet_wrap(vars(p), labeller = labeller(p = p_labs)) +
-  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Oranges")[4:2]), name = "connectivity") +
+  scale_color_manual(values = rev(c("black", RColorBrewer::brewer.pal(4, "Oranges")[4:2])), 
+                     name = "proportion contacts within patch") +
   scale_x_continuous(breaks = seq(0, 9, 0.3), expand = c(0,0), limits = c(0,0.91),
                      label = scales::percent, name = "immunization after decline (in 10% of patches)") +
   scale_y_continuous(name = "theoretical honeymoon time\n(time to Re > 1)") +
