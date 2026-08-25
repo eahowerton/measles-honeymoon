@@ -15,9 +15,13 @@
 \usepackage{caption}
 \usepackage{lineno}
 \usepackage[numbers,sort&compress]{natbib}
+\usepackage{xr-hyper}
 \usepackage{hyperref}
 \usepackage{xurl}
 \usepackage[capitalise,nameinlink]{cleveref}
+
+% Cross-references into the supplementary material (\ref{supp:...}).
+\externaldocument[supp:]{../supp/supplementary_material}[../supp/supplementary_material.pdf]
 
 \hypersetup{
   colorlinks=true,

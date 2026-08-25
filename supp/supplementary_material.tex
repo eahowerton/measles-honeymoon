@@ -7,7 +7,9 @@
 \usepackage{lineno}
 \usepackage{url}
 \usepackage[numbers,sort&compress]{natbib}
+\usepackage{xr-hyper}
 \usepackage[hidelinks]{hyperref}
+\externaldocument[main:]{../ms/measles_honeymoon}[../ms/measles_honeymoon.pdf]
 \geometry{a4paper, margin=1in}
 
 %%%%%%%%%%%%%%%
@@ -37,6 +39,7 @@
 \linenumbers
 
 \section{Theoretical honeymoon time in the SIR model}
+\label{sec:sir-honeymoon}
 \emily{I've rewritten the first half of this section to define the model equations and derive the equilibria explicitly.}
 We consider here how reductions in vaccination can lead to rebounds in disease prevalence. In particular, we will focus on the post-vaccination ``honeymoon", or how long it takes for the disease to rebound after vaccination starts declining. We use the term ``effective immunization coverage" throughout for the proportion successfully immunized, thereby accounting for both vaccination coverage and imperfect vaccine efficacy. 
 
@@ -113,9 +116,7 @@ Equivalently, the pre- and post-decline values of effective immunization coverag
        =v\bigl(1-e^{\mu T}\bigr)+e^{\mu T}\vcrit.
     \label{eq:equivalent-immunization-coverage}
 \end{equation}
-For fixed $T$ and $\mu$, Equation~\eqref{eq:equivalent-immunization-coverage} defines a straight line in the plane whose horizontal and vertical coordinates are the post- and pre-decline effective immunization coverages, $v$ and $v_0$, respectively.  The line has slope $1-e^{\mu T}<0$ and vertical intercept $e^{\mu T}\vcrit$.  Consequently, combinations of $v$ and $v_0$ that produce the same theoretical honeymoon time lie along straight lines.  This explains the linear contours in the heatmap of theoretical honeymoon time in the main text.
-
-\david{Heatmap file: \path{figures/honeymoon_SIR_with_linear_heatmap.pdf}.  I have referred to it descriptively because the main manuscript is not in \LaTeX\ and its figure number may change.}
+For fixed $T$ and $\mu$, Equation~\eqref{eq:equivalent-immunization-coverage} defines a straight line in the plane whose horizontal and vertical coordinates are the post- and pre-decline effective immunization coverages, $v$ and $v_0$, respectively.  The line has slope $1-e^{\mu T}<0$ and vertical intercept $e^{\mu T}\vcrit$.  Consequently, combinations of $v$ and $v_0$ that produce the same theoretical honeymoon time lie along straight lines.  This explains the linear contours in the heatmap of theoretical honeymoon time (main text, Figure~\ref{main:fig:simple-honeymoon}B).
 
 \section{Age-structured model}
 \label{sec:age-structure}
@@ -198,6 +199,7 @@ To calculate $\Rn$ in the age-structured model, we use the Next Generation Matri
 \end{enumerate}
 
 \section{The equivalence ratio}
+\label{sec:equivalence-ratio}
 \emily{I've removed the ``unity'' terminology, as it doesn't seem necessary. The only reason to keep it would be that ``unity calculation" is how Ottar describes it in his book, which I think is the (only? or) primary reference/derivation. ``Equivalence ratio'' is the term I coined for the slightly modified version used in the main text (now described in detail below), but I'm open to other names.}
 
 The dynamics of the age-structured model can be understood in relation to a model of aggregate variables where individuals are assumed to mix homogeneously (i.e., all susceptible individuals mix with all infective and all recovered individuals equally). To equate the dynamics under these two models, incidence can be written as 
@@ -250,6 +252,7 @@ This ratio can be interpreted as the ratio of the number of new infections in th
 
 
 \section{Metapopulation model}
+\label{sec:metapopulation}
 
 We consider a simple metapopulation model with $P$ patches that are assumed to be equally connected, such that $c$ is the proportion of contacts that occur within a patch and $1-c$ is the proportion of contacts that occur between patches. These between-patch contacts are assumed to be distributed uniformly across the remaining $P-1$ patches, and there is no permanent migration between patches. Patches are assumed to be identical except for a patch-specific effective immunization coverage, $v_p$. The model is defined by the following system of ordinary differential equations:
 
@@ -309,20 +312,23 @@ where $\mathbf{C}$ is the connectivity matrix, with $C_{p,p} = c$ for all $p = 1
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{introduction_timing.pdf}
-    \caption{Sensitivity of results to the timing of infection introduction. For each WAIFW matrix (columns, see main text), simulated dynamics when a single infection is introduced into the 5 year old age class 1, 3, or 5 years after the drop in effective immunization coverage (rows). The solid vertical line shows the timing of introduction. The lighter line shows simulation results if effective immunization coverage returns to its pre-decline level 1 year after the drop (shown by dotted line).}
+    \caption{Sensitivity of results to the timing of infection introduction. For each WAIFW matrix (columns, see main text Figure~\ref{main:fig:age-structured-outbreaks}A), simulated dynamics when a single infection is introduced into the 5 year old age class 1, 3, or 5 years after the drop in effective immunization coverage (rows). The solid vertical line shows the timing of introduction. The lighter line shows simulation results if effective immunization coverage returns to its pre-decline level 1 year after the drop (shown by dotted line).}
+    \label{fig:introduction-timing}
 \end{figure}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\textwidth]{honeymoon_age_full_comparestart.pdf}
-    \caption{Theoretical honeymoon time predictions, computed as time until Re > 1, under five assumptions about age-structured mixing. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and pre-decline effective immunization coverage of 95\% and 96\%.
+    \includegraphics[width=\textwidth]{../figures/honeymoon_age_full_comparestart.pdf}
+    \caption{Theoretical honeymoon time predictions, computed as time until $\Reff > 1$, under five assumptions about age-structured mixing. Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and pre-decline effective immunization coverage of 95\% and 96\%.
 }
+    \label{fig:age-honeymoon-comparestart}
 \end{figure}
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=\textwidth]{connectivity_fig.pdf}
+    \includegraphics[width=\textwidth]{../figures/connectivity_fig.pdf}
     \caption{Role of patch connectivity in theoretical honeymoon time. (A) Theoretical honeymoon time, computed as time until $\Reff > 1$, by post-decline effective immunization coverage when drops occur in 10\% of patches among an equally connected network. Line color shows different connectivity scenarios, modeled by the proportion of contacts that occur within the home patch, and the points show equivalence between a model with no connectivity (i.e., 100\% of contacts occuring within the home patch) and a model where 90\% of contacts occur wtihin the home patch. (B) Sensitivity of results to the percent of patches in which effective immunization coverage declines compared to the no connectivity scenario (black). Results are shown for a population with $\mu =1/80 \text{ years}^{-1}$, a pathogen with $\Rn = 17$, and pre-decline effective immunization coverage of 95\%. }
+    \label{fig:connectivity}
 \end{figure}
 
 \clearpage
