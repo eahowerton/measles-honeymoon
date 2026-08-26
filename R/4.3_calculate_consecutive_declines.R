@@ -73,7 +73,9 @@ who_drops_by_country_summ  = who_drops_by_country %>%
   mutate(row_id = seq_len(n())) %>%
   mutate(drop_bin = ifelse(!is.na(drop), drop_bins[min(which(drop < drop_bins))], NA), .by = c("row_id"))
 
-saveRDS(who_drops_by_country_summ, "data/output-data/drops_by_country_WHO.rda")
+saveRDS(who_vacc, "data/output-data/WHO_vacc.rda")
+saveRDS(who_drops_by_country, "data/output-data/drops_by_country_WHO.rda")
+saveRDS(who_drops_by_country_summ, "data/output-data/drops_by_country_WHO_summary.rda")
 
 #### COVERAGE DROPS IS US DATA -------------------------------------------------
 # FIPS: https://data.transportation.gov/Railroads/State-County-and-City-FIPS-Reference-Table/eek5-pv8d/about_data
@@ -97,8 +99,12 @@ drops_by_county = vacc %>%
   arrange(state_abbrev, location_id, start_year) %>%
   dplyr::reframe(get_max_drop(value, 2017, 2023), .by = c("county_name", "location_id", "state_abbrev"))
 
+drop_bins = seq(-0.5, 0, 0.01)
 drops_by_county_summ  = drops_by_county %>%
   mutate(row_id = seq_len(n())) %>%
   mutate(drop_bin = ifelse(!is.na(drop), drop_bins[min(which(drop <= drop_bins))], NA), .by = c("row_id"))
 
-saveRDS(drops_by_county_summ, "data/output-data/drops_by_county_US.rda")
+saveRDS(vacc, "data/output-data/US_vacc.rda")
+saveRDS(drops_by_county, "data/output-data/drops_by_county_US.rda")
+saveRDS(drops_by_county_summ, "data/output-data/drops_by_county_US_summary.rda")
+

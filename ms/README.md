@@ -1,18 +1,8 @@
 # Main manuscript
 
-This directory contains the generic arXiv-style LaTeX version of
+This directory contains the LaTeX version of
 “Dynamic consequences of declining vaccination coverage in a heterogeneous
-world.” The initial source was converted from the project Google document:
-
-<https://docs.google.com/document/d/1O6cOvPdR1GhHBe-c8_iUdeBdXx0IcBT6NO5Gun0MfDU/edit?tab=t.0>
-
-The conversion preserves the manuscript's wording and order. Google Docs
-comments are retained as attributed author-comment macros (`\david`,
-`\emily`, `\jess`, and `\bryan`). David's concrete textual suggestions are
-shown as blue strikeouts (`\stkout`) and red replacement text (`\dsugg`) so
-that proposed edits remain distinct from discussion comments. The default
-build is deliberately journal-neutral and includes light-grey line numbers
-for review.
+world.” 
 
 The references are maintained in `measles_honeymoon.bib` and processed with
 BibTeX. The local `measles_honeymoon.bst` is the Vancouver bibliography style,
