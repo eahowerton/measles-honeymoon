@@ -200,55 +200,108 @@ To calculate $\Rn$ in the age-structured model, we use the Next Generation Matri
 
 \section{The equivalence ratio}
 \label{sec:equivalence-ratio}
-\emily{I've removed the ``unity'' terminology, as it doesn't seem necessary. The only reason to keep it would be that ``unity calculation" is how Ottar describes it in his book, which I think is the (only? or) primary reference/derivation. ``Equivalence ratio'' is the term I coined for the slightly modified version used in the main text (now described in detail below), but I'm open to other names.}
+\emily{I've removed the ``unity'' terminology. The only reason to keep it would be that ``unity calculation" is how Ottar describes it in his book, which I think is the (only? or) primary reference/derivation. ``Equivalence ratio'' is the term I coined for the modified version I created, but I'm open to other names. I suggest we settle on the approach and notation/terminology here, and then I will update the main text accordingly.}
 
-The dynamics of the age-structured model can be understood in relation to a model of aggregate variables where individuals are assumed to mix homogeneously (i.e., all susceptible individuals mix with all infective and all recovered individuals equally). To equate the dynamics under these two models, incidence can be written as 
+The dynamics of the age-structured model can be understood in relation to a model of aggregate variables where individuals are assumed to mix homogeneously (i.e., all susceptible individuals mix with all infective and all recovered individuals equally). We will refer to these two models as the age-structured model and the homogeneous model, respectively. To equate the dynamics under these two models, incidence can be written as 
 
 \begin{equation}
 \begin{aligned}
     \text{age-structured infections} &=  \sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t) \\
-    &= \hat{\beta}(t)\sum_{i=1}^{A} S_i(t) \sum_{j=1}^{A} I_j(t) \\
-    &= \text{homogeneous infections}
+    &= \hat{\beta(t)}\sum_{i=1}^{A} S_i(t) \sum_{j=1}^{A} I_j(t) %\\
+    %&= \text{homogeneous infections}
 \end{aligned}
 \label{eq:derive-unity-beta-simple}
 \end{equation}
 
 \noindent
-given the time-varying transmission rate, $\hat{\beta}(t)$, defined as 
+given the time-varying transmission rate, $\hat{\beta(t)}$, defined as 
 
 \begin{align}
-\hat{\beta}(t) = \frac{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}{\sum_{i=1}^{A}S_i(t)\sum_{j=1}^{A}I_j(t)}.
+\hat{\beta(t)} = \frac{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}{\sum_{i=1}^{A}S_i(t)\sum_{j=1}^{A}I_j(t)}.
 \label{eq:unity-beta-simple}
 \end{align} 
 
+We demonstrate this calculation for the age-structured model and example WAIFW matrices considered in the main text (Figure~\ref{fig:unity-beta-simple}). For the flat WAIFW matrix, which is equivalent to the homogeneous model, $\hat{\beta(t)}$ is constant over time (flat black line, Figure~\ref{fig:unity-beta-simple}A). In contrast, the other WAIFW matrices yield time-varying $\hat{\beta(t)}$, and when each $\hat{\beta(t)}$ is used in a homogeneous model of aggregate variables, the dynamics approximate those of the age-structured model (Figure~\ref{fig:unity-beta-simple}B, solid colored versus gray dashed lines). 
+
+We can also characterize the periods in which $\hat{\beta(t)}$ is higher or lower than the homogeneous case (flat black line, Figure~\ref{fig:unity-beta-simple}A) via 
+
+\begin{align}
+    \frac{\hat{\beta(t)}}{\beta} &= \frac{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}{\beta \sum_{i=1}^{A}S_i(t)\sum_{j=1}^{A}I_j(t)}.
+    \label{eq:equiv-ratio-simple}
+\end{align}
+
+\noindent
+This quantity can be interpreted as the number of new infections that would have been produced in the age-structured model relative to the number of new infections that would have been produced in the homogeneous model given the same number of susceptible and infected individuals. This ratio acts as a scalar on the homogeneous transmission rate, $\beta$, such that $\frac{\hat{\beta(t)}}{\beta} > 1$ indicates an increase in transmission over the homogeneous case, and vice versa for $\frac{\hat{\beta(t)}}{\beta} < 1$.
+
+
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=\textwidth]{../figures/beta_hat_illustration.pdf}
+    \caption{Illustration of $\hat{\beta(t)}$ for five sample WAIFW matrices. (A) Time-varying transmission rate, $\hat{\beta(t)}$, scales homogeneous dynamics to age-structured. The flat line for the flat matrix is the annual transmission rate that yields $\Rn = 17$ given  $\gamma = 1/14 \text{ days}^{-1}$ and $\mu =1/80 \text{ years}^{-1}$. (B) Infection dynamics since immunization decline in the age-structured model under different WAIFW matrices are shown in the solid colored lines (equivalent to Main text Figure~\ref{main:fig:age-structured-outbreaks}), and the dashed gray lines (overlaid) show infection dynamics in a homogeneous model with time-varying transmission rate, $\hat{\beta(t)}$. See Main text for details on sample WAIFW matrices. }
+    \label{fig:unity-beta-simple}
+\end{figure}
+
+
 \hfill
 
-\emily{This $\hat{\beta}(t)$ gives us a time-varying reproduction number with dynamics equivalent to an age-structured model. For example, this would reproduce the red line in main text Figure 3C. In the main text, though, we have fixed the WAIFW matrices and then compared the ensuing dynamics (i.e., compared red line to black line). Hopefully my attempt below explains what I've done and the logic.}
+\emily{This $\hat{\beta(t)}$ gives us a time-varying transmission rate that yields dynamics equivalent to the age-structured model under each WAIFW matrix (i.e., we can reproduce each of the colored lines in Fig S1B). In the Main text, though, I think we would like to compare dynamics for each of the WAIFW matrices to the baseline homogeneous case. So two outstsanding questions: (1) is the comparison to the homogenous case really what we are interested in? I think it enables better comparison across the different WAIFW matrices than the simple $\hat{\beta}$ above. And (2) how should we characterize this comparison? I've outlined two possibilities below.}
 
 \hfill
 
-In the main text, however, we compared dynamics under structured WAIFW mixing matrices to a flat WAIFW matrix reflective of homogeneous mixing. Let $\theta$ and $\theta^{\text{flat}}$ be the WAIFW matrices that define the transmission dynamics we wish to compare. We choose $\theta^{\text{flat}}_{i,j} = c$ for all $i,j$ such that both models have the same basic reproduction number. Similar to Equation~\eqref{eq:derive-unity-beta-simple}, we have
+While the existence of $\hat{\beta(t)}$ indicates that the dynamics of the age-structured model can be reproduced by a homogeneous model with a time-varying transmission rate, it does not provide a direct comparison to the homogeneous case. We can construct this  comparison by rescaling transmission \textit{in the age-structured model} in order to reproduce the dynamics of the homogeneous case: 
+
 \begin{equation}
 \begin{aligned}
-    \text{age-structured infections} &= \sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t) \\
-    \text{flat WAIFW infections} & =\sum_{i=1}^{A}\sum_{j=1}^{A} \theta^{\text{flat}}_{i,j} S^{\text{flat}}_i(t) I^{\text{flat}}_j(t) \\ 
-    &= c \sum_{i=1}^{A} S^{\text{flat}}_i(t) \sum_{j=1}^{A} I^{\text{flat}}_j(t)
+    \text{homogeneous infections} &= \beta \sum_{i=1}^{A} S_i(t) \sum_{j=1}^{A} I_j(t) \\
+    &= k(t) \sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t) %\\
+    %&=  \text{age-structured infections} 
+\end{aligned}
+\label{eq:derive-unity-beta-homogeneous}
+\end{equation}
+
+\noindent
+where 
+
+\begin{align}
+    k(t) = \frac{\beta \sum_{i=1}^{A} S_i(t) \sum_{j=1}^{A} I_j(t)}{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}.
+    \label{eq:unity-beta-homogeneous}
+\end{align}
+
+\noindent
+In this case, $k(t)$ is a ratio scaling the age-structured transmission rates captured by $\theta_{i,j}$ (and thus functions similarly to $\hat{\beta(t)}/ \beta$). We call this quantity the equivalence ratio. Again, $k(t) > 1$ suggests that age-structured transmission increases over baseline to reproduce homogeneous dynamics, which implies that age-structured dynamics would have been slower than homogeneous in the absence of scaling. 
+
+\emily{I've chosen $k(t)$ notation to differentiate it from the $\hat{\beta}$ quantities above, but open to suggestions.}
+
+We again demonstrate the equivalence ratio calculation for the age-structured model and example WAIFW matrices (Figure~\ref{fig:unity-beta-homogeneous}). As with $\hat{\beta(t)}$, no scaling of transmission is necessary in the flat WAIFW case, and thus $k(t) = 1$ for all $t$. For the other WAIFW matrices, $k(t)$ varies over time, and when $k(t)$ scales the age-structured transmission rates, the dynamics match those of the homogeneous model (the dashed lines in Figure~\ref{fig:unity-beta-homogeneous}B reproduce the flat WAIFW case). The value of $k(t)$ relative to 1 suggests the degree to which the age-structured model deviates from the homogeneous model. For example, under the peak at age 10 WAIFW matrix, $k(t) > 1$ for the entire period, indicating that dynamics would have been slower under the age-structured assumptions than they would have been under the homogeneous model.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../figures/beta_hat_illustration_toSIR.pdf}
+    \caption{Illustration of $k(t)$ for five example WAIFW matrices. (A) Equivalence ratio, $k(t)$, scales age-structured transmission to yield dynamics equivalent to the homogeneous model. When $k(t) < 1$, unscaled transmission in the age-structured model is higher than the homogeneous model, indicating that age-structure would have ``sped up" dynamics; vice versa when $k(t) > 1$. (B) Infection dynamics since immunization decline in the age-structured model under different WAIFW matrices are shown in the light solid lines (equivalent to Main text Figure~\ref{main:fig:age-structured-outbreaks}), and dashed lines show infection dynamics when $k(t)$ is used to scale transmission in the age-structured model. See Main text for details on sample WAIFW matrices. }
+    \label{fig:unity-beta-homogeneous}
+\end{figure}
+
+\emily{Below is the version that I was originally using in the main text (currently shown in Figure 3). I think I prefer the $k(t)$ above as it provides a comparison of the two models from the same dynamical state at each point in time. Let me know what you think. }
+
+Alternatively, we might compare the dynamics of the age-structured model to the homogeneous model without rescaling, again using the number of new infections produced at each point in time. In this case, the number of new infections in each model is
+
+\begin{equation}
+\begin{aligned}
+    \text{age-structured infections} &= \sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t), \text{ and } \\
+    \text{flat WAIFW infections} & = \beta \sum_{i=1}^{A} S^{\text{flat}}_i(t) \sum_{j=1}^{A} I^{\text{flat}}_j(t)
 \end{aligned}
 \end{equation}
 
 \noindent
-which we can use to define an equivalence ratio, $k(t)$, as
+and we use this to define an equivalence ratio, $q(t)$, as
 
 \begin{align}
-k(t) = \frac{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}{c \sum_{i=1}^{A}S^{\text{flat}}_i(t)\sum_{j=1}^{A}I^{\text{flat}}_j(t)}
+q(t) = \frac{\sum_{i=1}^{A}\sum_{j=1}^{A} \theta_{i,j} S_i(t) I_j(t)}{\beta \sum_{i=1}^{A}S^{\text{flat}}_i(t)\sum_{j=1}^{A}I^{\text{flat}}_j(t)}
 \label{eq:equivalence-ratio}
 \end{align}
 
-This ratio can be interpreted as the ratio of the number of new infections in the age-structured model to the number of new infections in the homogeneous model. If $k(t) > 1$ then age-structured dynamics are faster than the homogeneous dynamics, and vice versa if $k(t) < 1$.
-
-\emily{One challenge with interpretation that I'm not sure how to resolve: because this compares instantaneous incidence, it is sensitive to the relative timing of outbreaks. For this reason, I'm not sure it's very meaningful after the first outbreak. But again, open to thoughts.}
-
-\emily{I will wait to update the main text until we've verified this calculation and settled on notation/terminology.}
+\emily{Three notes: (1) I've used a different notation for each possible version of the equivalence ratio; (2) The $q(t)$ version is sensitive to the relative timing of outbreaks under each model, and for this reason, I'm not sure it's very meaningful after the first outbreak. I think this may be an issue for $k(t)$ too, but perhaps less so? (3) I've kept the orientation of $q(t)$ that I originally used in the main text, where $q(t) > 1$ indicates that age-structured dynamics are faster than homogeneous dynamics. This is the opposite orientation of $k(t)$ above. }
 
 
 \section{Metapopulation model}
