@@ -87,9 +87,9 @@ beep()
 release_sim_df_long = bind_rows(release_sim_df)
 
 unity_beta_long = release_sim_df_long %>%
-  filter(variable %in% c("BH")) %>%
+  filter(variable %in% c("new_inf")) %>%
   left_join(release_sim_df_long %>%
-              filter(variable %in% c("BH"), waifw_id == 1) %>%
+              filter(variable %in% c("new_inf"), waifw_id == 1) %>%
               select(time, variable, value) %>%
               rename(homog_value = value)) %>%
   left_join(scalars) %>%
@@ -160,7 +160,7 @@ pt1 = release_sim_df_long %>%
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
 pt2 = unity_beta_long %>%
-  filter(variable == "BH") %>%
+  filter(variable == "new_inf") %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
   ggplot(aes(x = time, y = unity_beta, color = as.factor(waifw_id))) + 
   geom_text(data = data.frame(y = c(1e2, 1/1e2), x = c(10, 10), vjust = c(1, 0),
@@ -169,7 +169,7 @@ pt2 = unity_beta_long %>%
             aes(x = x, y = y, label = lab, vjust = vjust), 
             hjust = 1, color = "black", size = 1.9, alpha = 1, lineheight = 0.8) +
   geom_line(data = unity_beta_long %>%
-              filter(variable == "BH", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") + 
+              filter(variable == "new_inf", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") +
   geom_line(aes(linetype = variable), linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   guides(color = FALSE) +

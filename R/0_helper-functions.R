@@ -72,20 +72,25 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert,
       IC[which(indx_comp == tmp_comp)] = start_pop*IC_manual[tmp_comp]*expected_stable$stable.age
     }
   }
-  else if(length(IC_manual == length(IC))){
+  else if(length(IC_manual) == length(IC)){
     IC = IC_manual
   }
-  IC = c(IC, BH = 0)
+  IC = c(IC, new_inf = 0, BH = 0)
   return(IC)
 }
 
 #' generate long data frame from ODE output
 process_results <- function(rslts, max_t, dt){
-  rslts_long <- rslts %>%
-    mutate(BH = c(NA, diff(BH))*(1/dt)) %>%
+  extra_vars = c("new_inf", "BH")
+  extra_long = rslts[, c("time", extra_vars)]
+  extra_long[extra_vars] = lapply(extra_long[extra_vars],
+                                  function(v) c(NA, diff(v)) * (1/dt))
+  extra_long = extra_long %>% melt(c("time")) %>% mutate(age = NA_real_)
+  rslts_long <- rslts[, setdiff(names(rslts), extra_vars)] %>%
     melt(c("time")) %>%
     tidytable::separate(variable, into = c("variable", "age"), sep = "_") %>%
-    mutate(age = as.double(age))
+    mutate(age = as.double(age)) %>%
+    bind_rows(extra_long)
   return(rslts_long)
 }
 

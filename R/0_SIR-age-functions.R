@@ -18,7 +18,7 @@ sir_age_structured = function(t, x, parms, compartments, age_classes, mort, Fmat
                               vax_rates, waifw, adjust_beta_flag = FALSE, 
                               print_warnings_flag = FALSE, burnin = 0){
   with(as.list(parms),{
-    x = x[1:(length(x)-1)] # remove beta hat variable for calculations
+    x = x[1:(length(x)-2)] # remove new_inf and BH (beta_hat) tracking variables for calculations
     if(any(x < 0)){x[which(x<0)] = 0; if(t< burnin){x[seq(2, length(x),3)] = x[seq(2, length(x),3)] + 10}; print(paste0("adj at t = ", t))} # check x is non-neg
     nage = length(age_classes)
     ncomp = length(compartments)
@@ -62,7 +62,7 @@ sir_age_structured = function(t, x, parms, compartments, age_classes, mort, Fmat
                  nrow = nage, ncol = ncomp)
     der = c(t(der))
     names(der) = sapply(age_classes, function(i){paste0(compartments, "_", i)})
-    der = c(der, BH = sum(lambda*x_mat[, "S"]))
+    der = c(der, new_inf = sum(lambda*x_mat[, "S"]), BH = beta_hat)
     if(any(is.na(der))){browser()}
     return(list(der))
   })
