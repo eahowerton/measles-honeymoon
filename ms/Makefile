@@ -8,11 +8,11 @@ export NC   := $(shell tput sgr0)
 .PRECIOUS: %.pdf %.tex
 
 SOURCES = $(MS).tex $(MS)_preamble.tex $(MS)_main.tex $(MS).bib $(MS).bst
-FIGURES = figures/figure1_global_mcv1_coverage.png \
+FIGURES = ../figures/vacc_coverage_heatmap.pdf \
 	../figures/honeymoon_SIR_with_linear_heatmap.pdf \
 	../figures/release_examples_age.pdf \
 	../figures/honeymoon_age_full_start95.pdf \
-	../figures/empirical_vax_declines_v3_AI.pdf
+	../figures/empirical_vax_declines.pdf
 
 LATEXMK      := latexmk
 LATEXMKFLAGS := -pdf -bibtex -silent -use-make
