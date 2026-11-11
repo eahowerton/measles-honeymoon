@@ -73,9 +73,10 @@ vax_equilib_long = expand.grid(age = age_classes,
   mutate(value = ifelse(variable == "S", N*(1-start_vax), ifelse(variable == "I", 0, N*start_vax)))
 
 #### SIMULATE FULL AGE STRUCTURED MODEL FOR EACH WAIFW -------------------------
+#### INCLUDE BETA HAT ADJUSTMENT 
 # with vaccination release
 release_vax = 0.2
-chosen_dt = 1/(52*7) # need step sizes to be smaller so numerical error does not accumulate
+chosen_dt = 1/(52*7)
 # show equilibrium values for different vax rates and waifw matrices
 release_sim_df = vector("list", length(waifw))
 # IC_release = vector("list", length(waifw))
@@ -89,22 +90,25 @@ for(i in 1:length(waifw)){
   I_indx = which(substr(names(IC_manual), 1, 1) == "I")
   IC_manual[which(names(IC_manual) == "I_5")] = 1
   IC_manual[which(names(IC_manual) == "R_5")] = IC_manual[which(names(IC_manual) == "R_5")] - 1
+  IC_adj = vax_equilib_long %>% 
+    summarize(value = sum(value), .by = c("variable")) %>% 
+    pull(value) 
+  names(IC_adj) = c("S_adj", "I_adj", "R_adj")
+  IC_adj["I_adj"] = 1
+  IC_adj["R_adj"] = IC_adj["R_adj"] - 1  
   release_sim_df[[i]] = run_ode(
     age_classes = age_classes, mort = mort,
     fert = fert, start_pop = paras["N"],
     compartments = compartments, dt = chosen_dt,
     vax_rates = c(release_vax), waifw = waifw[[i]],
-    IC_manual = IC_manual, max_t = 10, params = paras_all[[i]], #, IC_manual = new_IC
-    adjust_beta_flag = FALSE) %>%
+    IC_manual = c(IC_manual, IC_adj), max_t = 10, params = paras_all[[i]], #, IC_manual = new_IC
+    adjust_beta_flag = FALSE, 
+    add_homogenous_adjusted_run = TRUE) %>%
     mutate(waifw_id = i)
 }
 beep()
 
 release_sim_df_long = bind_rows(release_sim_df)
-
-#### SIMULATE NON-STRUCTURED MODEL WITH UNITY BETA -----------------------------
-# unity beta governs the transmission rate in a simple SIR model
-# we expect to get the exact same dynamics as above for each WAIFW
 
 bh = release_sim_df_long %>%
   filter(variable %in% c("BH")) %>%
@@ -113,51 +117,31 @@ bh = release_sim_df_long %>%
   unique() %>%
   arrange(waifw_id, time)
 
-release_sim_df_adjbeta = vector("list", length(waifw))
-for(i in 1:length(waifw)){
-  print(paste0(i, "/", length(waifw)))
-  bt_tmp = approxfun(bh %>% filter(waifw_id == i) %>% pull(time), 
-                     bh %>% filter(waifw_id == i) %>% pull(value))
-  # start at dt (because don't have beta hat beforehand)
-  IC = release_sim_df_long %>%
-    filter(waifw_id == i, time == chosen_dt, !variable %in% c("BH", "new_inf")) %>%
-    summarize(value = sum(value), .by = c("variable"))
-  IC_manual = IC %>% pull(value) 
-  names(IC_manual) = IC %>% pull(variable)
-  IC_manual = IC_manual[c("S", "I", "R")]
-  release_sim_df_adjbeta[[i]] = as.data.frame(ode(
-    y = IC_manual, times = seq(chosen_dt, 10, chosen_dt), 
-    func = ode_sir, parms = c(paras_all[[i]], v = release_vax), bt = bt_tmp
-  )) %>% 
-    melt(c("time")) %>%
-    mutate(waifw_id = i)
-}
-beep()
-
-release_sim_df_adjbeta_long = bind_rows(release_sim_df_adjbeta)
-
 # plot results
+# beta hat
 p1 = bh %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
-  ggplot(aes(x = time, y = value, color = as.factor(waifw_id))) + 
+  ggplot(aes(x = time, y = value/paras["gamma"], color = as.factor(waifw_id))) + 
+  geom_hline(yintercept = paras["beta0"]/paras["gamma"], linetype = "dotted") +
   geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
-  scale_y_continuous(name = expression(hat(beta)(t) ~ ("years"^-1))) +
+  scale_y_continuous(name = expression(hat(beta)(t)/gamma)) +
   theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
         legend.position = "none",
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
+# proportion infected
 p2 = release_sim_df_long %>%
   filter(variable %in% c("I")) %>%
   summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
   ggplot(aes(x = time, y = value/paras["N"], color = as.factor(waifw_id))) + 
   geom_line(linewidth = 0.5) +
-  geom_line(data = release_sim_df_adjbeta_long %>%
-              filter(variable %in% c("I"), !is.na(value)),
+  geom_line(data = release_sim_df_long %>%
+              filter(variable %in% c("I_adj"), !is.na(value)),
             linewidth = 0.5, color = "gray", linetype = "dashed") +
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
@@ -168,8 +152,32 @@ p2 = release_sim_df_long %>%
         legend.position = "none",
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
-plot_grid(p1, p2, ncol = 1, align = "v", axis = "lr", labels = c("A", "B"), label_size = 8)
-ggsave("figures/beta_hat_illustration.pdf", width = 6, height = 4)
+# difference between proportion infected in each case
+p3 = release_sim_df_long %>%
+  filter(variable %in% c("I")) %>%
+  summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>% 
+  left_join(
+    release_sim_df_long %>%
+      filter(variable %in% c("I_adj"), !is.na(value)) %>%
+      rename(value_adj = value) %>%
+      select(-variable) 
+  ) %>%
+  mutate(I_diff = (value_adj-value)/value, 
+         waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
+  ggplot(aes(x = time, y = I_diff, color = as.factor(waifw_id))) + 
+  geom_line(linewidth = 0.5) +
+  facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
+  scale_y_continuous(name = "percent difference in\nproportion infected") +
+  theme_bw(base_size = 7) +
+  theme(legend.title = element_blank(), 
+        legend.position = "none",
+        panel.grid.minor = element_blank(), 
+        strip.background = element_blank())
+  
+plot_grid(p1, p2, p3, ncol = 1, align = "v", axis = "lr", labels = c("A", "B", "C"), label_size = 8)
+ggsave("figures/beta_hat_illustration.pdf", width = 6, height = 5)
 
 #### SIMULATE STRUCTURED MODEL TO YIELD SIR DYNAMICS ---------------------------
 # the equivalence ratio governs the transmission rate in a simple SIR model
@@ -211,6 +219,12 @@ bh2 = release_sim_df_adjbeta2_long %>%
 p1 = bh2 %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
   ggplot(aes(x = time, y = paras_all[[1]]["beta0"]/value, color = as.factor(waifw_id))) + 
+  geom_text(data = data.frame(y = c(0.95, 1/0.95), x = c(10, 10), vjust = c(1, 0),
+                              waifw_id = factor(1, levels = c(1, 5, 4, 2, 3)),
+                              lab = c("\nspeeding up\nwith age structure", "slowing down\nwith age structure\n")),
+            aes(x = x, y = y, label = lab, vjust = vjust), 
+            hjust = 1, color = "black", size = 1.9, alpha = 1, lineheight = 0.8) +
+  geom_hline(yintercept = 1, linetype = "dotted") +
   geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
@@ -240,6 +254,29 @@ p2 = release_sim_df_long %>%
         legend.position = "none",
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
-cowplot::plot_grid(p1, p2, ncol = 1, align = "v", axis = "lr")
-ggsave("figures/beta_hat_illustration_toSIR.pdf", width = 6, height = 4, labels = c("A", "B"), label_size = 8)
+p3 = release_sim_df_adjbeta2_long %>%
+  filter(variable %in% c("I")) %>%
+  summarize(value_adj = sum(value), .by = c("time", "variable", "waifw_id")) %>% 
+  left_join(
+    release_sim_df_adjbeta2_long %>%
+      filter(variable == "I", waifw_id == 1) %>%
+      summarize(value = sum(value), .by = c("time", "variable", "waifw_id")) %>% 
+      select(-variable, -waifw_id) 
+  ) %>%
+  mutate(I_diff = (value_adj-value)/value, 
+         waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
+  ggplot(aes(x = time, y = I_diff, color = as.factor(waifw_id))) + 
+  geom_line(linewidth = 0.5) +
+  facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
+  scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
+  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
+  scale_y_continuous(name = "percent difference in\nproportion infected") +
+  theme_bw(base_size = 7) +
+  theme(legend.title = element_blank(), 
+        legend.position = "none",
+        panel.grid.minor = element_blank(), 
+        strip.background = element_blank())
+
+cowplot::plot_grid(p1, p2, p3, ncol = 1, align = "v", axis = "lr", labels = c("A", "B", "C"), label_size = 8)
+ggsave("figures/beta_hat_illustration_toSIR.pdf", width = 6, height = 5)
 

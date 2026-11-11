@@ -10,15 +10,19 @@
 #' @param vax_rates rate of vaccination
 #' @param waifw who acquires infection from whom matrix 
 #'              dimension: length(age_classes) x length(age_classes)
-#' @param adjust_beta_flag rescale transmission rate to match homogeneous model
-#'                         (using unity beta calculation)
+#' @param adjust_beta_flag rescale transmission rate (using unity beta calculation)
+#' @param add_homogenous_adjusted_run also simulate homogeneous SIR with adjusted transmission rate 
+#'                                    (using unity beta calculation)
 #' @param burnin double before which negative population sizes are replenished 
 #' @param print_warnings_flag print warnings if population sizes fall below 0
 sir_age_structured = function(t, x, parms, compartments, age_classes, mort, Fmat,
-                              vax_rates, waifw, adjust_beta_flag = FALSE, 
+                              vax_rates, waifw, 
+                              adjust_beta_flag = FALSE, add_homogenous_adjusted_run = FALSE,
                               print_warnings_flag = FALSE, burnin = 0){
   with(as.list(parms),{
-    x = x[1:(length(x)-2)] # remove new_inf and BH (beta_hat) tracking variables for calculations
+    n_extra = ifelse(add_homogenous_adjusted_run, 5, 2)
+    x_full = x
+    x = x[1:(length(x)-n_extra)] # remove new_inf and BH (beta_hat) tracking variables for calculations + 3 S, I, R states for adjusted homogneous model
     if(any(x < 0)){x[which(x<0)] = 0; if(t< burnin){x[seq(2, length(x),3)] = x[seq(2, length(x),3)] + 10}; print(paste0("adj at t = ", t))} # check x is non-neg
     nage = length(age_classes)
     ncomp = length(compartments)
@@ -62,11 +66,18 @@ sir_age_structured = function(t, x, parms, compartments, age_classes, mort, Fmat
                  nrow = nage, ncol = ncomp)
     der = c(t(der))
     names(der) = sapply(age_classes, function(i){paste0(compartments, "_", i)})
+    if(add_homogenous_adjusted_run){
+      dS_adj = mu * (1-v) * N - beta_hat * unname(x_full["S_adj"]) * unname(x_full["I_adj"])/N - unname(x_full["S_adj"]) * mu
+      dI_adj = beta_hat * unname(x_full["S_adj"]) * unname(x_full["I_adj"])/N - (mu + gamma) * unname(x_full["I_adj"])
+      dR_adj = mu * v * N + gamma * unname(x_full["I_adj"]) - mu * unname(x_full["R_adj"])
+      der = c(der, S_adj = dS_adj, I_adj = dI_adj, R_adj = dR_adj)
+    }
     der = c(der, new_inf = sum(lambda*x_mat[, "S"]), BH = beta_hat)
     if(any(is.na(der))){browser()}
     return(list(der))
   })
 }
+
 
 
 

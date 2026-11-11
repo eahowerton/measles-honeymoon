@@ -14,8 +14,9 @@
 #' @param max_t double max time of the simulation
 #' @param dt double time step of simulation
 #' @param beep_flag beep when simulation is complete
-#' @param adjust_beta_flag rescale transmission rate to match homogeneous model
-#'                         (using unity beta calculation)
+#' @param adjust_beta_flag rescale transmission rate (using unity beta calculation)
+#' @param add_homogenous_adjusted_run also simulate homogeneous SIR with adjusted transmission rate 
+#'                                    (using unity beta calculation)
 #' @param burnin double before which negative population sizes are replenished 
 #' @param print_warnings_flag print warnings if population sizes fall below 0
 #' @param func function that contains age structured model
@@ -23,6 +24,7 @@
 run_ode <- function(age_classes, compartments, params, mort, fert, start_pop,
                     vax_rates = NA, waifw = NA, IC_manual = NA, max_t, dt = 1/12, 
                     beep_flag = FALSE, adjust_beta_flag = FALSE,
+                    add_homogenous_adjusted_run = FALSE,
                     burnin = 0, print_warnings_flag = FALSE, 
                     func = sir_age_structured){
   # setup
@@ -48,11 +50,12 @@ run_ode <- function(age_classes, compartments, params, mort, fert, start_pop,
       parms = params, 
       Fmat = Fmat,
       adjust_beta_flag = adjust_beta_flag, 
+      add_homogenous_adjusted_run = add_homogenous_adjusted_run,
       print_warnings_flag = print_warnings_flag, 
       burnin = burnin
     ))
   if(beep_flag){beep()}
-  return(process_results(rslts, max_t, dt))
+  return(process_results(rslts, max_t, dt, add_homogenous_adjusted_run))
 }
 
 #' provide an IC vector (distributed according to stable age distribution)
@@ -72,7 +75,7 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert,
       IC[which(indx_comp == tmp_comp)] = start_pop*IC_manual[tmp_comp]*expected_stable$stable.age
     }
   }
-  else if(length(IC_manual) == length(IC)){
+  else if(length(IC_manual) >= length(IC)){
     IC = IC_manual
   }
   IC = c(IC, new_inf = 0, BH = 0)
@@ -80,10 +83,17 @@ setup_IC <- function(start_pop, age_classes, compartments, mort, fert,
 }
 
 #' generate long data frame from ODE output
-process_results <- function(rslts, max_t, dt){
-  extra_vars = c("new_inf", "BH")
+process_results <- function(rslts, max_t, dt, add_homogenous_adjusted_run){
+  extra_vars_inc = c("S_adj", "I_adj", "R_adj")
+  extra_vars_cum = c("new_inf", "BH")
+  if(add_homogenous_adjusted_run){
+    extra_vars = c(extra_vars_inc, extra_vars_cum)
+  }
+  else{
+    extra_vars = c(extra_vars_cum)
+  }
   extra_long = rslts[, c("time", extra_vars)]
-  extra_long[extra_vars] = lapply(extra_long[extra_vars],
+  extra_long[extra_vars_cum] = lapply(extra_long[extra_vars_cum],
                                   function(v) c(NA, diff(v)) * (1/dt))
   extra_long = extra_long %>% melt(c("time")) %>% mutate(age = NA_real_)
   rslts_long <- rslts[, setdiff(names(rslts), extra_vars)] %>%
