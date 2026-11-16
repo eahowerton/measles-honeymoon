@@ -72,8 +72,8 @@ sir_age_structured = function(t, x, parms, compartments, age_classes, mort, Fmat
       dR_adj = mu * v * N + gamma * unname(x_full["I_adj"]) - mu * unname(x_full["R_adj"])
       der = c(der, S_adj = dS_adj, I_adj = dI_adj, R_adj = dR_adj)
     }
-    der = c(der, new_inf = sum(lambda*x_mat[, "S"]), BH = beta_hat)
     if(any(is.na(der))){browser()}
+    der = c(der, new_inf = sum(lambda*x_mat[, "S"]), BH = beta_hat)
     return(list(der))
   })
 }
