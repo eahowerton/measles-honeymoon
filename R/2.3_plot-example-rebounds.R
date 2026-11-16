@@ -86,14 +86,41 @@ beep()
 
 release_sim_df_long = bind_rows(release_sim_df)
 
-unity_beta_long = release_sim_df_long %>%
-  filter(variable %in% c("new_inf")) %>%
-  left_join(release_sim_df_long %>%
-              filter(variable %in% c("new_inf"), waifw_id == 1) %>%
-              select(time, variable, value) %>%
-              rename(homog_value = value)) %>%
+#### SIMULATE STRUCTURED MODEL TO YIELD SIR DYNAMICS ---------------------------
+# the equivalence ratio governs the transmission rate in a simple SIR model
+# we expect to get the same dynamics as the flat WAIFW above
+
+# use adjust_beta_flag = TRUE flag to implement time-varying beta_hat transmission rate
+release_sim_df_adjbeta2 = vector("list", length(waifw))
+for(i in 1:length(waifw)){
+  print(paste0(i, "/", length(waifw)))
+  IC_manual = vax_equilib_long %>% arrange(age)
+  names_IC = paste(IC_manual$variable, IC_manual$age, sep = "_")
+  IC_manual = IC_manual$value
+  names(IC_manual) = names_IC
+  # try putting all I individuals in age 5
+  I_indx = which(substr(names(IC_manual), 1, 1) == "I")
+  IC_manual[which(names(IC_manual) == "I_5")] = 1
+  IC_manual[which(names(IC_manual) == "R_5")] = IC_manual[which(names(IC_manual) == "R_5")] - 1
+  release_sim_df_adjbeta2[[i]] = run_ode(
+    age_classes = age_classes, mort = mort,
+    fert = fert, start_pop = paras["N"],
+    compartments = compartments, dt = chosen_dt,
+    vax_rates = c(release_vax), waifw = waifw[[i]]*scalars[i, "scalar"],
+    IC_manual = IC_manual, max_t = 10, params = paras_all[[1]], #, IC_manual = new_IC
+    adjust_beta_flag = TRUE) %>%
+    mutate(waifw_id = i)
+}
+beep()
+
+release_sim_df_adjbeta2_long = bind_rows(release_sim_df_adjbeta2)
+
+#### SETUP PLOTTING ------------------------------------------------------------
+
+unity_beta_long = release_sim_df_adjbeta2_long %>%
+  filter(variable %in% c("BH")) %>%
   left_join(scalars) %>%
-  mutate(unity_beta = (scalar*value)/homog_value)
+  mutate(unity_beta = paras_all[[1]]["beta0"]/value)
 
 Rt_long = release_sim_df_long %>% 
   filter(variable == "S") %>%
@@ -152,7 +179,7 @@ pt1 = release_sim_df_long %>%
   geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
+  scale_x_continuous(breaks = seq(0,10,2), expand = c(0,0), name = "years since immunization decline") + 
   scale_y_continuous(name = "infections") +
   theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
@@ -160,24 +187,21 @@ pt1 = release_sim_df_long %>%
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
 pt2 = unity_beta_long %>%
-  filter(variable == "new_inf") %>%
   mutate(waifw_id = factor(waifw_id, levels = c(1, 5, 4, 2, 3))) %>%
   ggplot(aes(x = time, y = unity_beta, color = as.factor(waifw_id))) + 
-  geom_text(data = data.frame(y = c(1e2, 1/1e2), x = c(10, 10), vjust = c(1, 0),
-                              waifw_id = 1,
+  geom_text(data = data.frame(y = c(0.95, 1/0.95), x = c(10, 10), vjust = c(1, 0),
+                              waifw_id = factor(1, levels = c(1, 5, 4, 2, 3)),
                               lab = c("\nspeeding up\nwith age structure", "slowing down\nwith age structure\n")),
             aes(x = x, y = y, label = lab, vjust = vjust), 
             hjust = 1, color = "black", size = 1.9, alpha = 1, lineheight = 0.8) +
   geom_line(data = unity_beta_long %>%
-              filter(variable == "new_inf", waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") +
+              filter(waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") +
   geom_line(aes(linetype = variable), linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   guides(color = FALSE) +
-  coord_cartesian(ylim = c(1/1e3,1e3)) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
-  scale_y_log10(breaks = c(1/rev(c(10, 1e2, 1e3)), c(1, 10, 1e2, 1e3)), 
-                labels = c("1/1,000", "1/100", "1/10", "1", "10", "100", "1,000"), name = "equivalence ratio") +
+  scale_x_continuous(breaks = seq(0,10,2), expand = c(0,0), name = "years since immunization decline") + 
+  scale_y_log10(name = "equivalence ratio, k(t)") +
   theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
         legend.position = "none",
@@ -192,7 +216,7 @@ pt3 = Rt_long %>%
   geom_line(linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
-  scale_x_continuous(breaks = seq(0,10,2), name = "years since immunization decline") + 
+  scale_x_continuous(breaks = seq(0,10,2), expand = c(0,0), name = "years since immunization decline") + 
   scale_y_continuous(name = "Re") +
   theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
@@ -219,8 +243,7 @@ pt4 = release_sim_df_long %>% filter(variable %in% c("S", "I"), age <= 10) %>%
                      name = "years since immunization decline") + 
   scale_y_continuous(expand = c(0,0), breaks = seq(0,10,2), name = "age (year)") + 
   theme_gray(base_size = 7) +
-  theme(#legend.position = "none",
-        legend.key.size = unit(0.35, "cm"),
+  theme(legend.key.size = unit(0.35, "cm"),
         panel.grid.minor = element_blank(), 
         strip.background = element_blank())
 
@@ -232,7 +255,7 @@ ggsave("figures/release_examples_age.pdf", width = 6.5, height = 7)
 # max unity beta in first period (not reliable for peak at age 10)
 unity_beta_long %>% 
   left_join(data.frame(waifw_id = 1:5, 
-                       approx_peak_time = c(3, 3, 3, 2,3))) %>%
+                       approx_peak_time = rep(4, 5))) %>%
   filter(time < approx_peak_time) %>% 
   summarize(m = 1/min(unity_beta, na.rm = TRUE), .by = waifw_id)
 
