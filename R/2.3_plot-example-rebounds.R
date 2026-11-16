@@ -89,7 +89,6 @@ release_sim_df_long = bind_rows(release_sim_df)
 #### SIMULATE STRUCTURED MODEL TO YIELD SIR DYNAMICS ---------------------------
 # the equivalence ratio governs the transmission rate in a simple SIR model
 # we expect to get the same dynamics as the flat WAIFW above
-
 # use adjust_beta_flag = TRUE flag to implement time-varying beta_hat transmission rate
 release_sim_df_adjbeta2 = vector("list", length(waifw))
 for(i in 1:length(waifw)){
@@ -194,14 +193,14 @@ pt2 = unity_beta_long %>%
                               lab = c("\nspeeding up\nwith age structure", "slowing down\nwith age structure\n")),
             aes(x = x, y = y, label = lab, vjust = vjust), 
             hjust = 1, color = "black", size = 1.9, alpha = 1, lineheight = 0.8) +
-  geom_line(data = unity_beta_long %>%
-              filter(waifw_id == 1) %>% select(-waifw_id), linewidth = 0.5, color = "black") +
+  geom_line(data = unity_beta_long %>% filter(waifw_id == 1) %>% select(-waifw_id), 
+            linewidth = 0.5, color = "black") +
   geom_line(aes(linetype = variable), linewidth = 0.5) + 
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   guides(color = FALSE) +
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), expand = c(0,0), name = "years since immunization decline") + 
-  scale_y_log10(name = "equivalence ratio, k(t)") +
+  scale_y_log10(name = expression("equivalence ratio," ~ k(t))) +
   theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
         legend.position = "none",
@@ -217,7 +216,7 @@ pt3 = Rt_long %>%
   facet_grid(cols = vars(waifw_id), labeller = labeller(waifw_id = waifw_labs)) + 
   scale_color_manual(values = c("black", RColorBrewer::brewer.pal(4, "Set1")), labels = waifw_labs) +
   scale_x_continuous(breaks = seq(0,10,2), expand = c(0,0), name = "years since immunization decline") + 
-  scale_y_continuous(name = "Re") +
+  scale_y_continuous(name = expression(R[eff])) +
   theme_bw(base_size = 7) +
   theme(legend.title = element_blank(), 
         legend.position = "none",
@@ -255,8 +254,9 @@ ggsave("figures/release_examples_age.pdf", width = 6.5, height = 7)
 # max unity beta in first period (not reliable for peak at age 10)
 unity_beta_long %>% 
   left_join(data.frame(waifw_id = 1:5, 
-                       approx_peak_time = rep(4, 5))) %>%
+                       waifw_lab = waifw_labs,
+                       approx_peak_time = rep(4.5, 5))) %>%
   filter(time < approx_peak_time) %>% 
-  summarize(m = 1/min(unity_beta, na.rm = TRUE), .by = waifw_id)
+  summarize(m = max(unity_beta, na.rm = TRUE), .by = waifw_lab)
 
 
