@@ -40,7 +40,6 @@
 
 \section{Theoretical honeymoon time in the SIR model}
 \label{sec:sir-honeymoon}
-\emily{I've rewritten the first half of this section to define the model equations and derive the equilibria explicitly.}
 We consider here how reductions in vaccination can lead to rebounds in disease prevalence. In particular, we will focus on the post-vaccination ``honeymoon", or how long it takes for the disease to rebound after vaccination starts declining. We use the term ``effective immunization coverage" throughout for the proportion successfully immunized, thereby accounting for both vaccination coverage and imperfect vaccine efficacy. 
 
 We begin with an SIR (Susceptible, Infected, Recovered) model of disease transmission. We assume that births and deaths occur at the same rate, $\mu$, and some proportion, $v$, of births are effectively immunized. We further assume that new infections occur upon contact between susceptible and infected individuals at rate $\beta$, and infected individuals recover at rate $\gamma$. The model can be defined by the following system of ordinary differential equations: 
@@ -66,7 +65,7 @@ which demonstrates the existence of two equilibria:
 \begin{enumerate}
     \item disease-free equilibrium, where $I^* = 0$ and $S^* = 1-v$, and
     % $I = 0$ yields $\mu (1-v) - \beta S (0) - \mu S = 0$ which implies $\mu ((1-v) - S) = 0$ or $S = (1-v)$
-    \item endemic equilibrium, where $I^* = \frac{\mu}{(\gamma + \mu)} \big((1-v) - 1/\Rn\big) > 0$ and $S^* = \frac{\gamma + \mu}{\beta} = 1/\Rn$. This equilibrium point only exists and is positive when $v < 1-1/\Rn$. \emily{the exact equation for $I^*$ in this case is less relevant for our purposes, but I've included it here for completeness}
+    \item endemic equilibrium, where $I^* = \frac{\mu}{(\gamma + \mu)} \big((1-v) - 1/\Rn\big) > 0$ and $S^* = \frac{\gamma + \mu}{\beta} = 1/\Rn$. This equilibrium point only exists and is positive when $v < 1-1/\Rn$.
     %  subtituting $S^* = \frac{\gamma + \mu}{\beta}$ into the equation for $dS/dt = 0$ yields 
     % \begin{align}
     %     0 = \mu (1-v) - \beta (\frac{\gamma + \mu}{\beta}) I^* - \mu (\frac{\gamma + \mu}{\beta}) \\
@@ -75,7 +74,7 @@ which demonstrates the existence of two equilibria:
     % \end{align}
 \end{enumerate}
 
-Within this framework, we imagine a population with some ``pre-decline'' effective immunization coverage, $v_0$, that experiences an instantaneous drop in coverage to $v$. We consider only the disease-free case in which the pre-decline effective immunization coverage is above the herd-immunity threshold, $v_0>1-1/\Rn$, equivalently $S^*=1-v_0<1/\Rn$; otherwise there is no positive honeymoon period. \emily{flagging that we haven't formally introduced the definition of honeymoon period yet, but perhaps safe to say the reader has been through the main text and has the general idea} 
+Within this framework, we imagine a population with some ``pre-decline'' effective immunization coverage, $v_0$, that experiences an instantaneous drop in coverage to $v$. We consider only the disease-free case in which the pre-decline effective immunization coverage is above the herd-immunity threshold, $v_0>1-1/\Rn$, equivalently $S^*=1-v_0<1/\Rn$.
 
 We hypothesize that the duration of the honeymoon period, or informally, the time until the first rebound outbreak, will depend on a number of factors including the basic reproduction number of the pathogen $\Rn$, the equilibrium proportion susceptible $S^*$, the birth rate $\mu$, the post-decline effective immunization coverage $v$, and the timing of importations. Because the timing and establishment of importations cannot be predicted by this deterministic model, we define the theoretical honeymoon time as the time until $\Reff=\Rn S(t)$ crosses 1. This provides a lower bound on the actual rebound time, because rebound additionally requires an importation to arrive and establish.
 
@@ -121,8 +120,6 @@ For fixed $T$ and $\mu$, Equation~\eqref{eq:equivalent-immunization-coverage} de
 \section{Age-structured model}
 \label{sec:age-structure}
 
-\emily{This section has been updated and all code/figures have been rerun. Minor numerical differences and no qualitative changes.}
-
 We also test honeymoon times under various assumptions about age-structured contact patterns. Our age-structured model defines a discrete set of $A$ age classes.  Transmission between individuals of different age classes is governed by a who-acquires-infection-from-whom (WAIFW) matrix, $\theta_{i,j}$, where $i$ and $j$ index age classes. The full system of ordinary differential equations governing the proportion of individuals in each age class and disease state is as follows:
 
 \begin{align}
@@ -130,15 +127,15 @@ We also test honeymoon times under various assumptions about age-structured cont
     \frac{dS_{i=1}}{dt} &= \mu (1-v) - \sum_{j=1}^{A} \theta_{1,j} S_1 I_j - \mu S_1 - \alpha_1 S_1 \\
     \frac{dS_{i\neq1}}{dt} &= \alpha_{i-1} S_{i-1} - \sum_{j=1}^{A} \theta_{i,j} S_i I_j - \mu S_i - \alpha_i S_i \\
     % infected
-    \frac{dI_{i=1}}{dt} &= \sum_{j=1}^{A} \theta_{1,j} S_1 I_j - (\gamma + \mu) I_1 - \alpha_1 I_1 \\
-    \frac{dI_{i\neq1}}{dt} &= \alpha_{i-1} I_{i-1} + \sum_{j=1}^{A} \theta_{i,j} S_i I_j - (\gamma + \mu) I_i - \alpha_i I_i \\
+    \frac{dI_{i=1}}{dt} &= \sum_{j=1}^{A} \theta_{1,j} S_1 I_j - \gamma  I_1 - \mu I_1 - \alpha_1 I_1 \\
+    \frac{dI_{i\neq1}}{dt} &= \alpha_{i-1} I_{i-1} + \sum_{j=1}^{A} \theta_{i,j} S_i I_j - \gamma  I_1 - \mu I_i - \alpha_i I_i \\
     % recovered
     \frac{dR_{i=1}}{dt} &= \mu v + \gamma I_1 - \mu R_1 - \alpha_1 R_1 \\
     \frac{dR_{i\neq1}}{dt} &= \alpha_{i-1} R_{i-1} + \gamma I_i - \mu R_i - \alpha_i R_i 
 \end{align}
 
 \noindent
-where $\mu$ is the birth and death rate, $\alpha_i$ is the rate of aging out of age class $i$ which is inversely proportional to its size, $\gamma$ is the recovery rate, and $v$ is the effective immunization coverage at birth. There is no aging out of the final age class  to ensure a constant population scaled to one (i.e., $\alpha_A = 0$).
+where $\mu$ is the birth and death rate, $\alpha_i$ is the rate of aging out of age class $i$ which is inversely proportional to its size, $\gamma$ is the recovery rate, and $v$ is the effective immunization coverage at birth (i.e., $\alpha_A = 0$). There is no aging out of the final age class  to ensure a constant population scaled to one (i.e., $\alpha_A = 0$).
 
 To calculate $\Rn$ in the age-structured model, we use the Next Generation Matrix method \citep{DiekmannEtAl1990}. To do so, we follow the steps from Bj\o{}rnstad (2018) \cite{Bjornstad2018}:
 \begin{enumerate}
@@ -221,7 +218,7 @@ given the time-varying transmission rate, $\hat{\beta(t)}$, defined as
 \label{eq:unity-beta-simple}
 \end{align} 
 
-We demonstrate this calculation for the age-structured model and example WAIFW matrices considered in the main text (Figure~\ref{fig:unity-beta-simple}). For the flat WAIFW matrix, which is equivalent to the homogeneous model, $\hat{\beta(t)}$ is constant over time (flat black line, Figure~\ref{fig:unity-beta-simple}A). In contrast, the other WAIFW matrices yield time-varying $\hat{\beta(t)}$, and when each $\hat{\beta(t)}$ is used in a homogeneous model of aggregate variables, the dynamics approximate those of the age-structured model (Figure~\ref{fig:unity-beta-simple}B, solid colored versus gray dashed lines). In these simulation experiments, the infection dynamics in the two models agree to numerical precision (Figure~ref{fig:unity-beta-simple}C).
+We demonstrate this calculation for the age-structured model and example WAIFW matrices considered in the main text (Figure~\ref{fig:unity-beta-simple}). For the flat WAIFW matrix, which is equivalent to the homogeneous model, $\hat{\beta(t)}$ is constant over time (flat black line, Figure~\ref{fig:unity-beta-simple}A). In contrast, the other WAIFW matrices yield time-varying $\hat{\beta(t)}$, and when each $\hat{\beta(t)}$ is used in a homogeneous model of aggregate variables, the dynamics approximate those of the age-structured model (Figure~\ref{fig:unity-beta-simple}B, solid colored versus gray dashed lines). In these simulation experiments, the infection dynamics in the two models agree to numerical precision (Figure~\ref{fig:unity-beta-simple}C).
 
 We can also characterize the periods in which $\hat{\beta(t)}$ is higher or lower than the homogeneous case (flat black line, Figure~\ref{fig:unity-beta-simple}A) via 
 
@@ -233,16 +230,7 @@ We can also characterize the periods in which $\hat{\beta(t)}$ is higher or lowe
 \noindent
 This ratio scales the homogeneous transmission rate, $\beta$, such that $\frac{\hat{\beta(t)}}{\beta} > 1$ indicates an increase in transmission over the homogeneous case, and vice versa for $\frac{\hat{\beta(t)}}{\beta} < 1$.
 
-
-
-\begin{figure}[ht!]
-    \centering
-    \includegraphics[width=\textwidth]{../figures/beta_hat_illustration.pdf}
-    \caption{Illustration of $\hat{\beta(t)}/\gamma$ for five sample WAIFW matrices. (A) Time-varying transmission rate, $\hat{\beta(t)}$, scales homogeneous dynamics to age-structured. The flat line for the flat matrix is the annual transmission rate that yields $\Rn = 17$ given  $\gamma = 1/14 \text{ days}^{-1}$ and $\mu =1/80 \text{ years}^{-1}$ (dotted line). (B) Infection dynamics since immunization decline in the age-structured model under different WAIFW matrices are shown in the solid colored lines (equivalent to Main text Figure~\ref{main:fig:age-structured-outbreaks}), and the dashed gray lines (overlaid) show infection dynamics in a homogeneous model with time-varying transmission rate, $\hat{\beta(t)}$. (C) Percent difference in proportion of individuals infected between the age-structured model and homogeneous model with time-varying transmission rate, $\hat{\beta(t)}$. Percent difference is calculated as $\frac{\text{homogeneous infections} - \text{age-structured infections}}{\text{age-structured infections}}$. See Main text for details on sample WAIFW matrices. }
-    \label{fig:unity-beta-simple}
-\end{figure}
-
-While the existence of $\hat{\beta(t)}$ indicates that the dynamics of the age-structured model can be reproduced by a homogeneous model with a time-varying transmission rate, it is not directly comparable across WAIFW matrices because the homogeneous model is reproducing varying age-structured dynamics. Instead, we can use the homogeneous case as a comparator, instead by rescaling transmission in the age-structured model: 
+While the existence of $\hat{\beta(t)}$ indicates that the dynamics of the age-structured model can be reproduced by a homogeneous model with a time-varying transmission rate, it is not directly comparable across WAIFW matrices. Instead, we can use the homogeneous case as a comparator for any age-structured dynamics by rescaling transmission in the age-structured model: 
 
 \begin{equation}
 \begin{aligned}
@@ -266,14 +254,7 @@ In this case, $k(t)$ is a ratio scaling the age-structured transmission rates ca
 
 \emily{I've chosen $k(t)$ notation to differentiate it from the $\hat{\beta}$ quantities above, but open to suggestions.}
 
-We again demonstrate the equivalence ratio calculation for the age-structured model and example WAIFW matrices (Figure~\ref{fig:unity-beta-homogeneous}). As with $\hat{\beta(t)}$, no scaling of transmission is necessary in the flat WAIFW case, and thus $k(t) = 1$ for all $t$. For the other WAIFW matrices, $k(t)$ varies over time, and when $k(t)$ scales the age-structured transmission rates, the dynamics match those of the homogeneous model (dashed lines in Figure~\ref{fig:unity-beta-homogeneous}B). The value of $k(t)$ relative to 1 suggests the degree to which the age-structured model deviates from the homogeneous model. For example, under the peak at age 10 WAIFW matrix, $k(t) > 1$ for the entire period, indicating that dynamics would have been slower under the age-structured assumptions than they would have been under the homogeneous model.
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{../figures/beta_hat_illustration_toSIR.pdf}
-    \caption{Illustration of $k(t)$ for five example WAIFW matrices. (A) Equivalence ratio, $k(t)$, scales age-structured transmission to yield dynamics equivalent to the homogeneous model. When $k(t) < 1$, unscaled transmission in the age-structured model is higher than the homogeneous model, indicating that age-structure would have ``sped up" dynamics; vice versa when $k(t) > 1$. (B) Infection dynamics since immunization decline in the age-structured model under different WAIFW matrices are shown in the light solid lines (equivalent to Main text Figure~\ref{main:fig:age-structured-outbreaks}), and dashed lines show infection dynamics when $k(t)$ is used to scale transmission in the age-structured model. See Main text for details on sample WAIFW matrices. (C) Percent difference in proportion of individuals infected between the homogeneous model and the age-structured model model with time-varying transmission rate, $\hat{\beta(t)}$. Percent difference is calculated as $\frac{\text{age-structured infections} - \text{homogeneous infections}}{\text{homogeneous infections}}$. See Main text for details on sample WAIFW matrices.}
-    \label{fig:unity-beta-homogeneous}
-\end{figure}
+We again demonstrate the equivalence ratio calculation for the age-structured model and example WAIFW matrices (Figure~\ref{fig:unity-beta-homogeneous}). As with $\hat{\beta(t)}$, no scaling of transmission is necessary in the flat WAIFW case, and thus $k(t) = 1$ for all $t$. For the other WAIFW matrices, $k(t)$ varies over time, and when $k(t)$ scales the age-structured transmission rates, the dynamics match those of the homogeneous model (dashed lines in Figure~\ref{fig:unity-beta-homogeneous}B). The value of $k(t)$ relative to 1 suggests the degree to which the transmission rate in the age-structured model must deviate from the homogeneous model to reproduce the same dynamics. For example, under the peak at age 10 WAIFW matrix, $k(t) > 1$ for the entire period, indicating that dynamics would have been slower under the unscaled, age-structured assumptions than they are under the homogeneous case.
 
 
 \section{Metapopulation model}
@@ -288,7 +269,7 @@ We consider a simple metapopulation model with $P$ patches that are assumed to b
 \end{align}
 
 \noindent
-where $\mathbf{C}$ is the connectivity matrix, with $C_{p,p} = c$ for all $p = 1, \cdots, P$ and $C_{p,q} = (1-c)/(P-1)$ for $p \neq q$. Again, we use the Next Generation Matrix method \citep{DiekmannEtAl1990} to calculate $\Rn$ following the steps from Bj\o{}rnstad (2018) \cite{Bjornstad2018}:
+where $C$ is the connectivity matrix, with $C_{p,p} = c$ for all $p = 1, \cdots, P$ and $C_{p,q} = (1-c)/(P-1)$ for $p \neq q$. Again, we use the Next Generation Matrix method \citep{DiekmannEtAl1990} to calculate $\Rn$ following the steps from Bj\o{}rnstad (2018) \cite{Bjornstad2018}:
 \begin{enumerate}
     \item Define the infected states, $\mathbf{X} = (I_1, I_2, ..., I_P)$
     \item Define the new infection terms, $\mathcal{F}(\mathbf{X}) = \Big[ \beta \sum_{q=1}^{P} C_{p,q} S_p I_q  \Big]$ for patches $p = 1, 2, ..., P$
@@ -327,6 +308,21 @@ where $\mathbf{C}$ is the connectivity matrix, with $C_{p,p} = c$ for all $p = 1
 \pagebreak
 
 \section{Supplementary Figures}
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=\textwidth]{../figures/beta_hat_illustration.pdf}
+    \caption{Illustration of $\hat{\beta(t)}/\gamma$ for five sample WAIFW matrices. (A) Time-varying transmission rate, $\hat{\beta(t)}$, scales homogeneous dynamics to age-structured. The flat line for the flat matrix is the annual transmission rate that yields $\Rn = 17$ given  $\gamma = 1/14 \text{ days}^{-1}$ and $\mu =1/80 \text{ years}^{-1}$ (dotted line). (B) Infection dynamics since immunization decline in the age-structured model under different WAIFW matrices are shown in the solid colored lines (equivalent to Main text Figure~\ref{main:fig:age-structured-outbreaks}), and the dashed gray lines (overlaid) show infection dynamics in a homogeneous model with time-varying transmission rate, $\hat{\beta(t)}$. (C) Percent difference in proportion of individuals infected between the age-structured model and homogeneous model with time-varying transmission rate, $\hat{\beta(t)}$. Percent difference is calculated as $\frac{\text{homogeneous infections} - \text{age-structured infections}}{\text{age-structured infections}}$. See Main text for details on sample WAIFW matrices. }
+    \label{fig:unity-beta-simple}
+\end{figure}
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../figures/beta_hat_illustration_toSIR.pdf}
+    \caption{Illustration of $k(t)$ for five example WAIFW matrices. (A) Equivalence ratio, $k(t)$, scales age-structured transmission to yield dynamics equivalent to the homogeneous model. When $k(t) < 1$, unscaled transmission in the age-structured model is higher than the homogeneous model, indicating that age-structure would have ``sped up" dynamics; vice versa when $k(t) > 1$. (B) Infection dynamics since immunization decline in the age-structured model under different WAIFW matrices are shown in the light solid lines (equivalent to Main text Figure~\ref{main:fig:age-structured-outbreaks}), and dashed lines show infection dynamics when $k(t)$ is used to scale transmission in the age-structured model. See Main text for details on sample WAIFW matrices. (C) Percent difference in proportion of individuals infected between the homogeneous model and the age-structured model model with time-varying transmission rate, $\hat{\beta(t)}$. Percent difference is calculated as $\frac{\text{age-structured infections} - \text{homogeneous infections}}{\text{homogeneous infections}}$. See Main text for details on sample WAIFW matrices.}
+    \label{fig:unity-beta-homogeneous}
+\end{figure}
 
 % \begin{figure}[h]
 %     \centering
